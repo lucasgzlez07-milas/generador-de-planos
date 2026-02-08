@@ -82,11 +82,11 @@ st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 4. SIDEBAR (Con logo de Superman)
+# 4. SIDEBAR (Con nuevo icono moderno "S")
 # ==============================================================================
 with st.sidebar:
-    # --- CAMBIO AQUI: Logo de Superman ---
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Superman_shield.svg/640px-Superman_shield.svg.png", width=80)
+    # --- CAMBIO AQUI: Nuevo logo "S" moderno ---
+    st.image("https://cdn-icons-png.flaticon.com/512/3586/3586131.png", width=70)
     
     if st.button("🗑️ Nueva Ficha / Resetear", type="primary", use_container_width=True):
         resetear_todo()
@@ -353,4 +353,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name=f"plano_{cliente if cliente else 'sin_nombre'}.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v4.4 | Superman Edition")
+st.caption("🚀 Generador de Planos v4.5 | Icono Moderno")
