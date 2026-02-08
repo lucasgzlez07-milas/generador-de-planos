@@ -99,30 +99,71 @@ st.markdown("""
 st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
-# 3. Sidebar
+# ==============================================================================
+# 3. SIDEBAR MEJORADO (AQUÍ ESTÁN LOS CAMBIOS SOLICITADOS)
+# ==============================================================================
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/2312/2312444.png", width=80)
-    st.header("Dimensiones Base")
-    val_ancho = st.number_input("Ancho Total (mm)", 1, 5000, 1200, 10, key="ancho_input")
-    val_alto = st.number_input("Alto Total (mm)", 1, 5000, 800, 10, key="alto_input")
+    st.image("https://cdn-icons-png.flaticon.com/512/2312/2312444.png", width=70)
+    st.markdown("### Configuración del Vidrio")
     
-    st.divider()
-    st.header("Configurar Perforaciones")
-    num_perf = st.number_input("Cantidad de orificios", 0, 20, 1, key="num_perf_input")
+    # MEJORA 1: Organización por Pestañas para limpiar la interfaz
+    tab_medidas, tab_perf, tab_estilo = st.tabs(["📏 Medidas", "🔘 Perforaciones", "🎨 Estilo"])
     
-    lista_perforaciones = []
-    for i in range(int(num_perf)):
-        with st.expander(f"📍 Perforación #{i+1}", expanded=(i == num_perf-1)):
-            c1, c2 = st.columns(2)
-            px = c1.number_input(f"X (mm)", 0, val_ancho, 100 + (i*150), key=f"x{i}")
-            py = c2.number_input(f"Y (mm)", 0, val_alto, 100 + (i*150), key=f"y{i}")
-            pd = st.number_input(f"Diámetro Ø (mm)", 1, val_ancho, 50, key=f"d{i}")
-            lista_perforaciones.append({"id": i+1, "x": px, "y": py, "diam": pd})
-    
-    st.divider()
-    st.header("Apariencia")
-    tipo_fig = st.select_slider("Estilo de Plano", options=["Solo Contorno", "Sólida"])
-    color_p = st.color_picker("Color de la pieza", "#1E3A8A")
+    # --- PESTAÑA 1: MEDIDAS ---
+    with tab_medidas:
+        # MEJORA 2: Presets de medidas estándar
+        opciones_medidas = {
+            "Personalizado": (1200, 800),
+            "Puerta Estándar (2100x900)": (900, 2100),
+            "Hoja Ventana (1200x1200)": (1200, 1200),
+            "Mampara Baño (1800x800)": (800, 1800),
+            "Plancha Jumbo (2500x3600)": (3600, 2500)
+        }
+        seleccion = st.selectbox("Seleccionar Tipo", list(opciones_medidas.keys()))
+        
+        # Lógica para usar preset o manual
+        ancho_default, alto_default = opciones_medidas[seleccion]
+        disabled_inputs = (seleccion != "Personalizado")
+        
+        c1, c2 = st.columns(2)
+        val_ancho = c1.number_input("Ancho (mm)", 1, 6000, ancho_default, 10, disabled=disabled_inputs, key="ancho_input")
+        val_alto = c2.number_input("Alto (mm)", 1, 6000, alto_default, 10, disabled=disabled_inputs, key="alto_input")
+        
+        st.info(f"Superficie: {round((val_ancho*val_alto)/1000000, 2)} m²")
+
+    # --- PESTAÑA 2: PERFORACIONES ---
+    with tab_perf:
+        num_perf = st.number_input("Cantidad de orificios", 0, 50, 1)
+        
+        lista_perforaciones = []
+        if num_perf > 0:
+            st.markdown("---")
+            for i in range(int(num_perf)):
+                with st.expander(f"📍 Perforación #{i+1}", expanded=(i == 0)):
+                    c1, c2, c3 = st.columns([1, 1, 1])
+                    px = c1.number_input(f"X (mm)", 0, val_ancho, 100 + (i*150), key=f"x{i}")
+                    py = c2.number_input(f"Y (mm)", 0, val_alto, 100 + (i*150), key=f"y{i}")
+                    pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"d{i}")
+                    
+                    # MEJORA 3: Validación visual en tiempo real
+                    fuera_rango = False
+                    if px > val_ancho or px < 0:
+                        st.warning(f"⚠️ 'X' fuera del vidrio (Max: {val_ancho})")
+                        fuera_rango = True
+                    if py > val_alto or py < 0:
+                        st.warning(f"⚠️ 'Y' fuera del vidrio (Max: {val_alto})")
+                        fuera_rango = True
+                    
+                    # Solo agregamos a la lista, la advertencia es visual para el usuario
+                    lista_perforaciones.append({"id": i+1, "x": px, "y": py, "diam": pd})
+        else:
+            st.caption("Sin perforaciones seleccionadas.")
+
+    # --- PESTAÑA 3: ESTILO ---
+    with tab_estilo:
+        tipo_fig = st.radio("Estilo de Visualización", ["Solo Contorno", "Sólida"], horizontal=True)
+        color_p = st.color_picker("Color del Vidrio", "#1E3A8A")
+        st.caption("Este color se usará en la visualización web.")
 
 # 4. Lógica Backend
 esc = 0.20 
@@ -174,7 +215,7 @@ with col_canvas:
     """
     st.markdown(canvas_html.replace("\n", ""), unsafe_allow_html=True)
 
-# 6. Función PDF (ESTILO TÉCNICO B/N)
+# 6. Función PDF
 def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -204,84 +245,69 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     start_y = height - 200 - (alto_mm * scale)
 
     # 4. Dibujo de la Pieza (Estilo Técnico)
-    # Independientemente de la selección de color, en el PDF técnico usamos blanco y negro.
-    # Si es sólida, rellenamos de gris claro para diferenciar, si no, solo borde negro.
     if tipo == "Sólida":
-        c.setFillColor(colors.lightgrey) # Gris muy suave para indicar solidez
+        c.setFillColor(colors.lightgrey) 
         c.setStrokeColor(NEGRO)
         c.setLineWidth(2)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=1, stroke=1)
     else:
         c.setStrokeColor(NEGRO)
-        c.setLineWidth(3) # Contorno grueso
+        c.setLineWidth(3)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=0, stroke=1)
 
-    # 5. Dibujo de Perforaciones y Cotas (Estilo App)
+    # 5. Dibujo de Perforaciones y Cotas
     for i, p in enumerate(perforaciones):
         cx = start_x + (p["x"] * scale)
         cy = (start_y + (alto_mm * scale)) - (p["y"] * scale)
         radio = (p["diam"] / 2) * scale
         
-        # Agujero: Círculo blanco con borde negro
         c.setFillColor(BLANCO)
         c.setStrokeColor(NEGRO)
         c.setLineWidth(1.5)
         c.circle(cx, cy, radio, fill=1, stroke=1)
         
-        # Mirilla (Cruz central)
         c.setLineWidth(0.5)
-        c.line(cx - radio + 2, cy, cx + radio - 2, cy) # H
-        c.line(cx, cy - radio + 2, cx, cy + radio - 2) # V
+        c.line(cx - radio + 2, cy, cx + radio - 2, cy)
+        c.line(cx, cy - radio + 2, cx, cy + radio - 2)
         
-        # === COTAS (Lógica idéntica a la APP: Hacia el borde más cercano) ===
-        c.setDash(2, 2) # Línea punteada
+        c.setDash(2, 2)
         c.setStrokeColor(NEGRO)
         c.setLineWidth(0.8)
         
-        # --- Cota Y (Vertical) ---
-        # En la App: si Y < Alto/2 (mitad superior visual), va hacia arriba.
+        # Cota Y
         dist_y_texto = p['y']
-        
         if p["y"] < alto_mm/2: 
-            # Hacia el borde SUPERIOR (PDF Y aumenta hacia arriba)
             y_dest = start_y + (alto_mm * scale)
             c.line(cx, cy + radio, cx, y_dest)
-            label_y_pos = (cy + radio + y_dest) / 2 # Posición etiqueta (mitad de linea)
+            label_y_pos = (cy + radio + y_dest) / 2
         else:
-            # Hacia el borde INFERIOR
             y_dest = start_y
             c.line(cx, cy - radio, cx, y_dest)
             label_y_pos = (cy - radio + y_dest) / 2
 
-        # Etiqueta Y (Cuadrito blanco con texto negro)
-        c.setDash() # Pausa dash para dibujar caja
+        c.setDash()
         text_y = str(p['y'])
         c.setFont("Helvetica-Bold", 8)
         w_text_y = c.stringWidth(text_y, "Helvetica-Bold", 8)
         
-        # Fondo blanco para el texto (para limpiar la línea punteada)
         c.setFillColor(BLANCO)
         c.setStrokeColor(NEGRO)
         c.setLineWidth(0.5)
-        # Dibujamos rectángulo pequeño centrado en la línea
         c.rect(cx - w_text_y/2 - 2, label_y_pos - 4, w_text_y + 4, 8, fill=1, stroke=1)
         c.setFillColor(NEGRO)
         c.drawCentredString(cx, label_y_pos - 2.5, text_y)
-        c.setDash(2, 2) # Retomamos dash
+        c.setDash(2, 2)
 
-        # --- Cota X (Horizontal) ---
+        # Cota X
         if p["x"] < ancho_mm/2:
-            # Hacia borde IZQUIERDO
             x_dest = start_x
             c.line(cx - radio, cy, x_dest, cy)
             label_x_pos = (cx - radio + x_dest) / 2
         else:
-            # Hacia borde DERECHO
             x_dest = start_x + (ancho_mm * scale)
             c.line(cx + radio, cy, x_dest, cy)
             label_x_pos = (cx + radio + x_dest) / 2
 
-        # Etiqueta X
         c.setDash()
         text_x = str(p['x'])
         w_text_x = c.stringWidth(text_x, "Helvetica-Bold", 8)
@@ -292,13 +318,11 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
         c.setFillColor(NEGRO)
         c.drawCentredString(label_x_pos, cy - 2.5, text_x)
 
-
-    # 6. Cotas Generales (Negro)
-    c.setDash() # Asegurar línea sólida
+    # 6. Cotas Generales
+    c.setDash()
     c.setFont("Helvetica-Bold", 12)
     c.setFillColor(NEGRO)
     
-    # Ancho
     ancho_txt = f"{ancho_mm} mm"
     w_txt = c.stringWidth(ancho_txt, "Helvetica-Bold", 12)
     c.setStrokeColor(NEGRO)
@@ -306,7 +330,6 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     c.roundRect(width/2 - w_txt/2 - 10, start_y - 40, w_txt + 20, 20, 4, fill=0, stroke=1)
     c.drawCentredString(width/2, start_y - 34, ancho_txt)
     
-    # Alto
     c.saveState()
     c.translate(start_x - 40, start_y + (alto_mm*scale)/2)
     c.rotate(90)
@@ -327,4 +350,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_tecnico_bn.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v3.9 | PDF Técnico B/N")
+st.caption("🚀 Generador de Planos v4.0 | Sidebar Renovado")
