@@ -3,7 +3,6 @@ from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
-from reportlab.lib.colors import HexColor # Importante para usar los colores exactos de la web
 
 # 1. Configuración de la página
 st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
@@ -175,26 +174,25 @@ with col_canvas:
     """
     st.markdown(canvas_html.replace("\n", ""), unsafe_allow_html=True)
 
-# 6. Función PDF REINGENIERIZADA (Visualización "Gemela")
+# 6. Función PDF (ESTILO TÉCNICO B/N)
 def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
     
-    # Colores CSS exactos traducidos a ReportLab
-    rojo_css = HexColor('#ef4444')
-    borde_oscuro = HexColor('#0f172a')
-    color_pieza = HexColor(color_hex)
+    # Configuramos el color Negro para todo el plano técnico
+    NEGRO = colors.black
+    BLANCO = colors.white
     
     # 1. Marco de la Página
     margen_marco = 20
-    c.setStrokeColor(colors.black)
+    c.setStrokeColor(NEGRO)
     c.setLineWidth(3)
     c.rect(margen_marco, margen_marco, width - (2*margen_marco), height - (2*margen_marco))
     
     # 2. Encabezado
     c.setFont("Helvetica-Bold", 22)
-    c.setFillColor(colors.black)
+    c.setFillColor(NEGRO)
     c.drawCentredString(width/2, height - 70, "PLANO ESTANDARIZADO")
     c.setLineWidth(1)
     c.line(margen_marco, height - 90, width - margen_marco, height - 90)
@@ -205,84 +203,111 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     start_x = (width - (ancho_mm * scale)) / 2
     start_y = height - 200 - (alto_mm * scale)
 
-    # 4. Dibujo de la Pieza (Estilo Web)
+    # 4. Dibujo de la Pieza (Estilo Técnico)
+    # Independientemente de la selección de color, en el PDF técnico usamos blanco y negro.
+    # Si es sólida, rellenamos de gris claro para diferenciar, si no, solo borde negro.
     if tipo == "Sólida":
-        # Relleno de color + Borde fino oscuro (Igual a .modo-solido)
-        c.setFillColor(color_pieza)
-        c.setStrokeColor(borde_oscuro)
-        c.setLineWidth(2) # Grosor del borde sólido en CSS
+        c.setFillColor(colors.lightgrey) # Gris muy suave para indicar solidez
+        c.setStrokeColor(NEGRO)
+        c.setLineWidth(2)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=1, stroke=1)
     else:
-        # Sin relleno + Borde grueso del color (Igual a .modo-contorno)
-        c.setStrokeColor(color_pieza)
-        c.setLineWidth(4) # Grosor del borde contorno en CSS
+        c.setStrokeColor(NEGRO)
+        c.setLineWidth(3) # Contorno grueso
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=0, stroke=1)
 
-    # 5. Dibujo de Perforaciones (Estilo Web)
+    # 5. Dibujo de Perforaciones y Cotas (Estilo App)
     for i, p in enumerate(perforaciones):
         cx = start_x + (p["x"] * scale)
         cy = (start_y + (alto_mm * scale)) - (p["y"] * scale)
         radio = (p["diam"] / 2) * scale
         
-        # Círculo blanco con borde rojo
-        c.setFillColor(colors.white)
-        c.setStrokeColor(rojo_css)
-        c.setLineWidth(2) # Borde del círculo
+        # Agujero: Círculo blanco con borde negro
+        c.setFillColor(BLANCO)
+        c.setStrokeColor(NEGRO)
+        c.setLineWidth(1.5)
         c.circle(cx, cy, radio, fill=1, stroke=1)
         
-        # Cruces internas (Mirilla)
-        c.setLineWidth(1)
-        c.setStrokeColor(rojo_css) # Rojo semitransparente visualmente es rojo fino aquí
-        c.line(cx - radio, cy, cx + radio, cy) # Horizontal
-        c.line(cx, cy - radio, cx, cy + radio) # Vertical
+        # Mirilla (Cruz central)
+        c.setLineWidth(0.5)
+        c.line(cx - radio + 2, cy, cx + radio - 2, cy) # H
+        c.line(cx, cy - radio + 2, cx, cy + radio - 2) # V
         
-        # Líneas de cotas punteadas (Rojas)
-        c.setDash(3, 3) # Efecto dashed
-        c.setStrokeColor(rojo_css)
+        # === COTAS (Lógica idéntica a la APP: Hacia el borde más cercano) ===
+        c.setDash(2, 2) # Línea punteada
+        c.setStrokeColor(NEGRO)
+        c.setLineWidth(0.8)
         
-        # Línea hacia borde Y (Arriba/Abajo)
-        if p["y"] < alto_mm/2: # Cota hacia abajo
-             c.line(cx, cy - radio, cx, start_y)
-        else: # Cota hacia arriba
-             c.line(cx, cy + radio, cx, start_y + alto_mm*scale)
-             
-        # Línea hacia borde X (Izq/Der)
-        if p["x"] < ancho_mm/2: # Cota hacia izq
-            c.line(cx - radio, cy, start_x, cy)
-        else: # Cota hacia der
-            c.line(cx + radio, cy, start_x + ancho_mm*scale, cy)
-            
-        c.setDash() # Reset dash
+        # --- Cota Y (Vertical) ---
+        # En la App: si Y < Alto/2 (mitad superior visual), va hacia arriba.
+        dist_y_texto = p['y']
         
-        # Etiquetas de coordenadas (Texto rojo pequeño)
-        c.setFont("Helvetica-Bold", 8)
-        c.setFillColor(rojo_css)
-        # Dibujamos un pequeño fondo blanco para que el texto se lea sobre las líneas
-        label_text = f"X:{p['x']} Y:{p['y']}"
-        text_width = c.stringWidth(label_text, "Helvetica-Bold", 8)
-        
-        c.setFillColor(colors.white)
-        c.rect(cx + 2, cy + 2, text_width + 2, 10, fill=1, stroke=0) # Fondo etiqueta
-        c.setFillColor(rojo_css)
-        c.drawString(cx + 3, cy + 4, label_text)
+        if p["y"] < alto_mm/2: 
+            # Hacia el borde SUPERIOR (PDF Y aumenta hacia arriba)
+            y_dest = start_y + (alto_mm * scale)
+            c.line(cx, cy + radio, cx, y_dest)
+            label_y_pos = (cy + radio + y_dest) / 2 # Posición etiqueta (mitad de linea)
+        else:
+            # Hacia el borde INFERIOR
+            y_dest = start_y
+            c.line(cx, cy - radio, cx, y_dest)
+            label_y_pos = (cy - radio + y_dest) / 2
 
-    # 6. Cotas Generales (Estilo Web)
-    # Etiqueta Ancho (Abajo)
+        # Etiqueta Y (Cuadrito blanco con texto negro)
+        c.setDash() # Pausa dash para dibujar caja
+        text_y = str(p['y'])
+        c.setFont("Helvetica-Bold", 8)
+        w_text_y = c.stringWidth(text_y, "Helvetica-Bold", 8)
+        
+        # Fondo blanco para el texto (para limpiar la línea punteada)
+        c.setFillColor(BLANCO)
+        c.setStrokeColor(NEGRO)
+        c.setLineWidth(0.5)
+        # Dibujamos rectángulo pequeño centrado en la línea
+        c.rect(cx - w_text_y/2 - 2, label_y_pos - 4, w_text_y + 4, 8, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.drawCentredString(cx, label_y_pos - 2.5, text_y)
+        c.setDash(2, 2) # Retomamos dash
+
+        # --- Cota X (Horizontal) ---
+        if p["x"] < ancho_mm/2:
+            # Hacia borde IZQUIERDO
+            x_dest = start_x
+            c.line(cx - radio, cy, x_dest, cy)
+            label_x_pos = (cx - radio + x_dest) / 2
+        else:
+            # Hacia borde DERECHO
+            x_dest = start_x + (ancho_mm * scale)
+            c.line(cx + radio, cy, x_dest, cy)
+            label_x_pos = (cx + radio + x_dest) / 2
+
+        # Etiqueta X
+        c.setDash()
+        text_x = str(p['x'])
+        w_text_x = c.stringWidth(text_x, "Helvetica-Bold", 8)
+        
+        c.setFillColor(BLANCO)
+        c.setStrokeColor(NEGRO)
+        c.rect(label_x_pos - w_text_x/2 - 2, cy - 4, w_text_x + 4, 8, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.drawCentredString(label_x_pos, cy - 2.5, text_x)
+
+
+    # 6. Cotas Generales (Negro)
+    c.setDash() # Asegurar línea sólida
     c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(colors.black) # Color texto general #1e293b (aprox negro)
+    c.setFillColor(NEGRO)
     
-    # Caja fondo etiqueta ancho
+    # Ancho
     ancho_txt = f"{ancho_mm} mm"
     w_txt = c.stringWidth(ancho_txt, "Helvetica-Bold", 12)
-    # Dibujamos "caja" simulando el estilo de la web
-    c.setStrokeColor(colors.black)
+    c.setStrokeColor(NEGRO)
     c.setLineWidth(1)
     c.roundRect(width/2 - w_txt/2 - 10, start_y - 40, w_txt + 20, 20, 4, fill=0, stroke=1)
     c.drawCentredString(width/2, start_y - 34, ancho_txt)
     
-    # Etiqueta Alto (Izquierda rotada)
+    # Alto
     c.saveState()
-    # Posicionamos al centro izquierda
     c.translate(start_x - 40, start_y + (alto_mm*scale)/2)
     c.rotate(90)
     alto_txt = f"{alto_mm} mm"
@@ -299,7 +324,7 @@ with col_ficha:
     st.markdown("### 📋 Ficha Técnica")
     st.markdown(f'<div class="metric-card" style="border-left: 5px solid {color_p};"><small>Medidas</small><h2>{val_ancho}x{val_alto}</h2></div>', unsafe_allow_html=True)
     pdf_file = create_pdf(val_ancho, val_alto, lista_perforaciones, color_p, tipo_fig, num_perf)
-    st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_visual.pdf", mime="application/pdf", use_container_width=True)
+    st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_tecnico_bn.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v3.8 | PDF Gemelo a la App")
+st.caption("🚀 Generador de Planos v3.9 | PDF Técnico B/N")
