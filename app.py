@@ -46,6 +46,7 @@ st.markdown("""
             border-radius: 5px;
             white-space: nowrap;
             position: absolute;
+            z-index: 100;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -78,12 +79,12 @@ with st.sidebar:
     tipo_fig = st.select_slider("Estilo de Plano", options=["Solo Contorno", "Sólida"])
     color_p = st.color_picker("Color de la pieza", "#1E3A8A")
 
-# 3. Lógica de Escala Visual MODIFICADA
+# 3. Lógica de Escala Visual MODIFICADA PARA VISTA SÓLIDA A 0 PERF.
 esc = 0.20 
 w_vis = val_ancho * esc
 h_vis = val_alto * esc
 
-# Si no hay perforaciones, forzar estilo Sólida
+# INDICACIÓN: Si es 0 perforaciones, forzar "Sólida"
 if num_perf == 0 or tipo_fig == "Sólida":
     estilo_f = f"background-color: {color_p}; border: 2px solid #0f172a; box-shadow: 0 10px 30px rgba(0,0,0,0.15);"
 else:
@@ -105,25 +106,23 @@ for i, p in enumerate(lista_perforaciones):
     html_p += f'<span style="position: absolute; {"left" if c_izq else "right"}: -10px; top: 50%; transform: translateY(-50%) {"translateX(-100%)" if c_izq else "translateX(100%)"}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p["x"]}</span></div>'
     html_p += f'</div>'
 
-# 5. Dashboard
+# 5. Dashboard (Renderizado Limpio)
 col_canvas, col_ficha = st.columns([3, 1], gap="medium")
 with col_canvas:
-    st.write(f"""
-        <div class="canvas-container">
-            <div style="width: {w_vis}px; height: {h_vis}px; {estilo_f} position: relative;">
-                {html_p}
-                <div class="medida-etiqueta" style="bottom: -60px; left: 50%; transform: translateX(-50%);">
-                    {val_ancho} mm
-                </div>
-                <div class="medida-etiqueta" style="left: -150px; top: 50%; transform: translateY(-50%) rotate(-90deg);">
-                    {val_alto} mm
-                </div>
-            </div>
+    # Usamos una variable limpia para evitar que Streamlit "rompa" el HTML
+    canvas_final = f"""
+    <div class="canvas-container">
+        <div style="width: {w_vis}px; height: {h_vis}px; {estilo_f} position: relative;">
+            {html_p}
+            <div class="medida-etiqueta" style="bottom: -60px; left: 0; right: 0; margin: 0 auto; width: fit-content; text-align: center;">{val_ancho} mm</div>
+            <div class="medida-etiqueta" style="left: -150px; top: 50%; transform: translateY(-50%) rotate(-90deg);">{val_alto} mm</div>
         </div>
-    """, unsafe_allow_html=True)
+    </div>
+    """
+    st.markdown(canvas_final, unsafe_allow_html=True)
 
 # 6. Función PDF
-def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, num_p):
+def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -137,16 +136,16 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, num_p):
     scale = min((width - margen*2) / ancho_mm, (height - 300) / alto_mm)
     start_x = (width - (ancho_mm * scale)) / 2
     start_y = height - 150 - (alto_mm * scale)
-    
-    # PDF también sigue la lógica: si num_p es 0, es sólido
-    if num_p == 0 or tipo == "Sólida":
+
+    # Lógica PDF: Sólido si perforaciones es 0
+    if n_perf == 0 or tipo == "Sólida":
         c.setFillColor(color_hex)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=1, stroke=1)
     else:
         c.setStrokeColor(color_hex)
         c.setLineWidth(2)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=0, stroke=1)
-        
+
     for i, p in enumerate(perforaciones):
         cx = start_x + (p["x"] * scale)
         cy = (start_y + (alto_mm * scale)) - (p["y"] * scale)
@@ -163,6 +162,7 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, num_p):
         c.setFont("Helvetica-Bold", 7)
         c.setFillColor(colors.red)
         c.drawString(cx + 2, cy + 2, f"X:{p['x']} Y:{p['y']}")
+
     c.setFont("Helvetica-Bold", 12)
     c.setFillColor(colors.black)
     c.drawCentredString(width/2, start_y - 20, f"ANCHO: {ancho_mm} mm")
@@ -178,8 +178,9 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, num_p):
 with col_ficha:
     st.markdown("### 📋 Ficha Técnica")
     st.markdown(f'<div class="metric-card" style="border-left: 5px solid {color_p};"><small>Medidas</small><h2>{val_ancho}x{val_alto}</h2></div>', unsafe_allow_html=True)
+    # Pasamos num_perf a la función PDF
     pdf_file = create_pdf(val_ancho, val_alto, lista_perforaciones, color_p, tipo_fig, num_perf)
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_visual.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v2.7 | Ficha técnica mejorada.")
+st.caption("🚀 Generador de Planos v2.7 | Vista sólida automática activada.")
