@@ -8,13 +8,22 @@ from reportlab.lib import colors
 st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
 
 # ==========================================
-# 2. ESTILO CSS
+# 2. FUNCIONES DE ESTADO (RESET)
+# ==========================================
+def resetear_todo():
+    """Restablece todos los valores a su estado inicial"""
+    st.session_state.cliente_input = ""
+    st.session_state.obra_input = ""
+    st.session_state.ancho_input = 1200
+    st.session_state.alto_input = 800
+    st.session_state.num_perf_input = 0
+    # No necesitamos resetear perforaciones individuales porque dependen de num_perf
+
+# ==========================================
+# 3. ESTILO CSS
 # ==========================================
 st.markdown("""
     <style>
-        /* =========================================
-           FONDO DE EDIFICIO VIDRIADO (MODERNO)
-           ========================================= */
         .stApp {
             background-image: 
                 linear-gradient(rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.70)),
@@ -27,10 +36,7 @@ st.markdown("""
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
         
-        .block-container { 
-            padding-top: 1rem;
-            padding-bottom: 1rem;
-        }
+        .block-container { padding-top: 1rem; padding-bottom: 1rem; }
         
         .canvas-container {
             background-color: #ffffff;
@@ -58,39 +64,17 @@ st.markdown("""
             margin-bottom: 15px;
         }
 
-        .pieza-base {
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .modo-solido {
-            background-color: var(--color-pieza);
-            border: 2px solid #0f172a;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        }
-
-        .modo-contorno {
-            background-color: rgba(255,255,255,0.5);
-            border: 4px solid var(--color-pieza);
-        }
+        .pieza-base { position: relative; transition: all 0.3s ease; }
+        .modo-solido { background-color: var(--color-pieza); border: 2px solid #0f172a; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .modo-contorno { background-color: rgba(255,255,255,0.5); border: 4px solid var(--color-pieza); }
 
         .etiqueta-medida {
-            position: absolute;
-            font-weight: 800;
-            color: #1e293b;
-            font-size: 14px;
-            background: #f8f9fa;
-            padding: 5px 15px;
-            border: 2px solid #1e293b;
-            border-radius: 5px;
-            white-space: nowrap;
-            z-index: 10;
-            pointer-events: none;
+            position: absolute; font-weight: 800; color: #1e293b; font-size: 14px;
+            background: #f8f9fa; padding: 5px 15px; border: 2px solid #1e293b;
+            border-radius: 5px; white-space: nowrap; z-index: 10; pointer-events: none;
         }
-        
         .etiqueta-ancho { bottom: -50px; left: 50%; transform: translateX(-50%); }
         .etiqueta-alto { left: -80px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; }
-
     </style>
 """, unsafe_allow_html=True)
 
@@ -99,15 +83,30 @@ st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 3. SIDEBAR MEJORADO (CON ESPESOR Y PESO)
+# 4. SIDEBAR MEJORADO (CON CLIENTE Y RESET)
 # ==============================================================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2312/2312444.png", width=70)
-    st.markdown("### Configuración del Vidrio")
     
+    # --- MEJORA 3: BOTÓN RESET ---
+    # Colocamos el botón arriba para acceso rápido
+    if st.button("🗑️ Nueva Ficha / Resetear", type="primary", use_container_width=True):
+        resetear_todo()
+        st.rerun()
+
+    st.markdown("### 📁 Datos del Proyecto")
+    
+    # --- MEJORA 1: DATOS DEL CLIENTE ---
+    # Usamos st.session_state para mantener los valores si se recarga la página, 
+    # pero permitimos que el botón reset los borre.
+    cliente = st.text_input("Cliente / Empresa", key="cliente_input", placeholder="Ej. Constructora Norte")
+    obra = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
+
+    st.divider()
+    
+    # Pestañas existentes
     tab_medidas, tab_perf, tab_estilo = st.tabs(["📏 Medidas", "🔘 Perforaciones", "🎨 Estilo"])
     
-    # --- PESTAÑA 1: MEDIDAS ---
     with tab_medidas:
         opciones_medidas = {
             "Personalizado": (1200, 800),
@@ -117,36 +116,37 @@ with st.sidebar:
             "Plancha Jumbo (2500x3600)": (3600, 2500)
         }
         seleccion = st.selectbox("Seleccionar Tipo", list(opciones_medidas.keys()))
-        ancho_default, alto_default = opciones_medidas[seleccion]
-        disabled_inputs = (seleccion != "Personalizado")
         
-        c1, c2 = st.columns(2)
-        val_ancho = c1.number_input("Ancho (mm)", 1, 6000, ancho_default, 10, disabled=disabled_inputs, key="ancho_input")
-        val_alto = c2.number_input("Alto (mm)", 1, 6000, alto_default, 10, disabled=disabled_inputs, key="alto_input")
+        # Si selecciona un preset, usamos esos valores, si es personalizado, usa el session_state
+        if seleccion != "Personalizado":
+            ancho_default, alto_default = opciones_medidas[seleccion]
+            # Actualizamos inputs si cambia el preset
+            val_ancho = st.number_input("Ancho (mm)", 1, 6000, value=ancho_default, step=10, key="ancho_preset_temp")
+            val_alto = st.number_input("Alto (mm)", 1, 6000, value=alto_default, step=10, key="alto_preset_temp")
+        else:
+            # Usamos las keys vinculadas al Reset
+            val_ancho = st.number_input("Ancho (mm)", 1, 6000, key="ancho_input", step=10)
+            val_alto = st.number_input("Alto (mm)", 1, 6000, key="alto_input", step=10)
         
         st.divider()
         
-        # MEJORA 3: Selector de Espesor
-        # Diccionario para mapear Nombre -> Valor numérico para cálculo
         opciones_espesor = {
             "4 mm": 4, "5 mm": 5, "6 mm": 6, "8 mm": 8, "10 mm": 10, 
             "12 mm": 12, "Laminado 3+3 (6mm)": 6, "Laminado 4+4 (8mm)": 8, "Laminado 5+5 (10mm)": 10
         }
-        espesor_nombre = st.selectbox("Espesor del Vidrio", list(opciones_espesor.keys()), index=2) # Default 6mm
+        espesor_nombre = st.selectbox("Espesor del Vidrio", list(opciones_espesor.keys()), index=2)
         espesor_valor = opciones_espesor[espesor_nombre]
 
-        # MEJORA 4: Cálculo de Peso (Fórmula: m2 * espesor * 2.5)
         area_m2 = (val_ancho * val_alto) / 1_000_000
         peso_kg = area_m2 * espesor_valor * 2.5
         
-        # Mostramos las métricas en la sidebar
         m1, m2 = st.columns(2)
         m1.metric("Superficie", f"{round(area_m2, 2)} m²")
         m2.metric("Peso Aprox.", f"{round(peso_kg, 1)} kg")
 
-    # --- PESTAÑA 2: PERFORACIONES ---
     with tab_perf:
-        num_perf = st.number_input("Cantidad de orificios", 0, 50, 1)
+        # Vinculamos la cantidad al session_state para que el reset funcione
+        num_perf = st.number_input("Cantidad de orificios", 0, 50, key="num_perf_input")
         
         lista_perforaciones = []
         if num_perf > 0:
@@ -167,13 +167,11 @@ with st.sidebar:
         else:
             st.caption("Sin perforaciones seleccionadas.")
 
-    # --- PESTAÑA 3: ESTILO ---
     with tab_estilo:
         tipo_fig = st.radio("Estilo de Visualización", ["Solo Contorno", "Sólida"], horizontal=True)
         color_p = st.color_picker("Color del Vidrio", "#1E3A8A")
-        st.caption("Este color se usará en la visualización web.")
 
-# 4. Lógica Backend
+# 5. Lógica Backend
 esc = 0.20 
 w_vis = val_ancho * esc
 h_vis = val_alto * esc
@@ -193,23 +191,20 @@ for i, p in enumerate(lista_perforaciones):
     left_pos = px_v - (pd_v/2)
     top_pos = py_v - (pd_v/2)
     
-    # 1. Cota Y
     altura_linea = py_v if c_arr else (h_vis - py_v)
     pos_y_container = "bottom: 50%;" if c_arr else "top: 50%;"
     pos_y_label = "top: -24px;" if c_arr else "bottom: -24px;"
     html_cota_y = f'<div style="position: absolute; {pos_y_container} left: 50%; width: 1px; height: {altura_linea + sep}px; border-left: 1px dashed #ef4444;"><span style="position: absolute; {pos_y_label} left: 50%; transform: translateX(-50%); color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p["y"]}</span></div>'
 
-    # 2. Cota X
     ancho_linea = px_v if c_izq else (w_vis - px_v)
     pos_x_container = "right: 50%;" if c_izq else "left: 50%;"
     trans_x_label = "translateX(-100%)" if c_izq else "translateX(100%)"
     pos_x_label = "left: -10px;" if c_izq else "right: -10px;"
     html_cota_x = f'<div style="position: absolute; {pos_x_container} top: 50%; height: 1px; width: {ancho_linea + sep + 40}px; border-top: 1px dashed #ef4444;"><span style="position: absolute; {pos_x_label} top: 50%; transform: translateY(-50%) {trans_x_label}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p["x"]}</span></div>'
 
-    # 3. Ensamblaje
     html_p += f'<div style="position: absolute; left: {left_pos}px; top: {top_pos}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i}; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;"><div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div><div style="height: 1px; width: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>{html_cota_y}{html_cota_x}</div>'
 
-# 5. Renderizado Principal
+# 6. Renderizado Principal
 col_canvas, col_ficha = st.columns([3, 1], gap="medium")
 with col_canvas:
     canvas_html = f"""
@@ -223,8 +218,8 @@ with col_canvas:
     """
     st.markdown(canvas_html.replace("\n", ""), unsafe_allow_html=True)
 
-# 6. Función PDF (Ahora incluye Espesor y Peso)
-def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_nom, peso_val):
+# 7. Función PDF ACTUALIZADA (Con Cliente y Obra)
+def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_nom, peso_val, cliente_nm, obra_ref):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -245,17 +240,25 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
     c.setLineWidth(1)
     c.line(margen_marco, height - 80, width - margen_marco, height - 80)
     
-    # === NUEVO: SUBTÍTULO CON DATOS TÉCNICOS ===
-    c.setFont("Helvetica", 10)
-    info_text = f"ESPESOR: {esp_nom}  |  PESO APROX: {round(peso_val, 1)} kg  |  PERFORACIONES: {n_perf}"
-    c.drawCentredString(width/2, height - 100, info_text)
+    # === DATOS CLIENTE (IZQUIERDA) ===
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(margen_marco + 15, height - 105, f"CLIENTE: {cliente_nm}")
+    c.drawString(margen_marco + 15, height - 120, f"OBRA: {obra_ref}")
+    
+    # === DATOS TÉCNICOS (DERECHA) ===
+    # Alineamos a la derecha usando drawRightString
+    c.drawRightString(width - margen_marco - 15, height - 105, f"ESPESOR: {esp_nom}")
+    c.drawRightString(width - margen_marco - 15, height - 120, f"PESO: {round(peso_val, 1)} kg")
+    
+    # Línea separadora inferior
+    c.line(margen_marco, height - 130, width - margen_marco, height - 130)
     # ===========================================
 
-    # 3. Lógica de Escala
+    # 3. Lógica de Escala (Ajustada porque el encabezado es más grande ahora)
     margen = 100
-    scale = min((width - margen*2) / ancho_mm, (height - 350) / alto_mm)
+    scale = min((width - margen*2) / ancho_mm, (height - 400) / alto_mm)
     start_x = (width - (ancho_mm * scale)) / 2
-    start_y = height - 200 - (alto_mm * scale)
+    start_y = height - 250 - (alto_mm * scale)
 
     # 4. Dibujo de la Pieza
     if tipo == "Sólida":
@@ -287,7 +290,6 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
         c.setStrokeColor(NEGRO)
         c.setLineWidth(0.8)
         
-        dist_y_texto = p['y']
         if p["y"] < alto_mm/2: 
             y_dest = start_y + (alto_mm * scale)
             c.line(cx, cy + radio, cx, y_dest)
@@ -301,7 +303,6 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
         text_y = str(p['y'])
         c.setFont("Helvetica-Bold", 8)
         w_text_y = c.stringWidth(text_y, "Helvetica-Bold", 8)
-        
         c.setFillColor(BLANCO)
         c.setStrokeColor(NEGRO)
         c.setLineWidth(0.5)
@@ -322,7 +323,6 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
         c.setDash()
         text_x = str(p['x'])
         w_text_x = c.stringWidth(text_x, "Helvetica-Bold", 8)
-        
         c.setFillColor(BLANCO)
         c.setStrokeColor(NEGRO)
         c.rect(label_x_pos - w_text_x/2 - 2, cy - 4, w_text_x + 4, 8, fill=1, stroke=1)
@@ -356,17 +356,17 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
 
 with col_ficha:
     st.markdown("### 📋 Ficha Técnica")
-    # Actualizado con datos de espesor y peso
     st.markdown(f'''
     <div class="metric-card" style="border-left: 5px solid {color_p};">
         <small>Medidas</small><h2>{val_ancho}x{val_alto}</h2>
-        <small style="color: #64748b;">Espesor: {espesor_nombre} | Peso: ~{round(peso_kg, 1)} kg</small>
+        <small style="color: #64748b;">Cliente: {cliente if cliente else "---"}</small><br>
+        <small style="color: #64748b;">Obra: {obra if obra else "---"}</small>
     </div>
     ''', unsafe_allow_html=True)
     
-    # Pasamos los nuevos datos a la función PDF
-    pdf_file = create_pdf(val_ancho, val_alto, lista_perforaciones, color_p, tipo_fig, num_perf, espesor_nombre, peso_kg)
-    st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_tecnico_bn.pdf", mime="application/pdf", use_container_width=True)
+    # Pasamos TODOS los datos al PDF
+    pdf_file = create_pdf(val_ancho, val_alto, lista_perforaciones, color_p, tipo_fig, num_perf, espesor_nombre, peso_kg, cliente, obra)
+    st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name=f"plano_{cliente}_{obra}.pdf" if cliente else "plano_tecnico.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v4.0 | Sidebar Renovado")
+st.caption("🚀 Generador de Planos v4.1 | Datos de Cliente y Reset")
