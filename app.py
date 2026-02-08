@@ -8,12 +8,19 @@ from reportlab.lib import colors
 st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
 
 # ==========================================
-# 2. ESTILO CSS (Mantenemos la versión robusta)
+# 2. ESTILO CSS (Modificado para subir todo al máximo)
 # ==========================================
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+        
+        /* AJUSTE CLAVE: Reducir padding superior al mínimo y subir el bloque */
+        .block-container { 
+            padding-top: 0.5rem; 
+            padding-bottom: 1rem;
+            margin-top: -40px; /* Margen negativo para subir contra el header */
+        }
         
         .canvas-container {
             background-color: #f8f9fa;
@@ -30,7 +37,15 @@ st.markdown("""
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
         }
 
-        .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin-bottom: 0px; }
+        /* AJUSTE CLAVE: Eliminar margen superior del título */
+        .main-title { 
+            font-weight: 800; 
+            letter-spacing: -1px; 
+            color: #1e293b; 
+            margin-bottom: 0px; 
+            margin-top: 0px !important;
+            padding-top: 0px;
+        }
         
         .metric-card {
             background: #ffffff;
@@ -80,7 +95,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
-st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#64748b; margin-top:-5px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
 # 3. Sidebar
 with st.sidebar:
@@ -112,48 +127,41 @@ esc = 0.20
 w_vis = val_ancho * esc
 h_vis = val_alto * esc
 
-# ==============================================================================
-# MODIFICACIÓN: Eliminada la condición "or num_perf == 0".
-# Ahora solo obedece al slider "tipo_fig".
-# ==============================================================================
+# Lógica de apariencia (Control manual por slider)
 if tipo_fig == "Sólida":
     clase_visual = "modo-solido"
 else:
     clase_visual = "modo-contorno"
 
-# Construcción del HTML (Minificado para evitar errores visuales)
+# Construcción del HTML (Minificado)
 html_p = ""
 for i, p in enumerate(lista_perforaciones):
     px_v, py_v, pd_v = p["x"] * esc, p["y"] * esc, p["diam"] * esc
     c_izq, c_arr = p["x"] < (val_ancho / 2), p["y"] < (val_alto / 2)
     sep = 30 + (i * 22)
     
-    # Cálculos de posición
     left_pos = px_v - (pd_v/2)
     top_pos = py_v - (pd_v/2)
     
-    # 1. Cota Y (Vertical)
+    # 1. Cota Y
     altura_linea = py_v if c_arr else (h_vis - py_v)
     pos_y_container = "bottom: 50%;" if c_arr else "top: 50%;"
     pos_y_label = "top: -24px;" if c_arr else "bottom: -24px;"
-    
     html_cota_y = f'<div style="position: absolute; {pos_y_container} left: 50%; width: 1px; height: {altura_linea + sep}px; border-left: 1px dashed #ef4444;"><span style="position: absolute; {pos_y_label} left: 50%; transform: translateX(-50%); color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p["y"]}</span></div>'
 
-    # 2. Cota X (Horizontal)
+    # 2. Cota X
     ancho_linea = px_v if c_izq else (w_vis - px_v)
     pos_x_container = "right: 50%;" if c_izq else "left: 50%;"
     trans_x_label = "translateX(-100%)" if c_izq else "translateX(100%)"
     pos_x_label = "left: -10px;" if c_izq else "right: -10px;"
-    
     html_cota_x = f'<div style="position: absolute; {pos_x_container} top: 50%; height: 1px; width: {ancho_linea + sep + 40}px; border-top: 1px dashed #ef4444;"><span style="position: absolute; {pos_x_label} top: 50%; transform: translateY(-50%) {trans_x_label}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p["x"]}</span></div>'
 
-    # 3. Ensamblaje final
+    # 3. Ensamblaje
     html_p += f'<div style="position: absolute; left: {left_pos}px; top: {top_pos}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i}; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;"><div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div><div style="height: 1px; width: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>{html_cota_y}{html_cota_x}</div>'
 
-# 5. Renderizado Principal (Frontend)
+# 5. Renderizado Principal
 col_canvas, col_ficha = st.columns([3, 1], gap="medium")
 with col_canvas:
-    # Usamos f-string simple sin indentación interna
     canvas_html = f"""
     <div class="canvas-container">
         <div class="pieza-base {clase_visual}" style="width: {w_vis}px; height: {h_vis}px; --color-pieza: {color_p};">
@@ -163,7 +171,6 @@ with col_canvas:
         </div>
     </div>
     """
-    # Limpiamos saltos de línea para evitar el bug visual
     st.markdown(canvas_html.replace("\n", ""), unsafe_allow_html=True)
 
 # 6. Función PDF
@@ -182,7 +189,6 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     start_x = (width - (ancho_mm * scale)) / 2
     start_y = height - 150 - (alto_mm * scale)
 
-    # MODIFICACIÓN: Eliminada la condición "or n_perf == 0"
     if tipo == "Sólida":
         c.setFillColor(color_hex)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=1, stroke=1)
@@ -227,4 +233,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_visual.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v3.2 | Control manual de apariencia")
+st.caption("🚀 Generador de Planos v3.3 | Diseño Compacto")
