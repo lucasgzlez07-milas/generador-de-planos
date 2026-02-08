@@ -13,13 +13,13 @@ st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
 st.markdown("""
     <style>
         /* =========================================
-           NUEVO: FONDO DE APLICACIÓN INDUSTRIAL
+           FONDO DE EDIFICIO VIDRIADO (MODERNO)
            ========================================= */
         .stApp {
-            /* Se aplica una capa blanca semitransparente sobre la imagen para mantener la legibilidad */
+            /* Capa semitransparente más clara: Blanco puro (255,255,255) al 70% de opacidad */
             background-image: 
-                linear-gradient(rgba(248, 249, 250, 0.85), rgba(248, 249, 250, 0.85)),
-                url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=2670&auto=format&fit=crop');
+                linear-gradient(rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.70)),
+                url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2670&auto=format&fit=crop');
             background-size: cover;
             background-attachment: fixed;
             background-position: center center;
@@ -34,9 +34,9 @@ st.markdown("""
             padding-bottom: 1rem;
         }
         
-        /* Canvas Container - Le damos un fondo blanco sólido para que destaque sobre el fondo de la app */
+        /* Canvas Container - Fondo blanco puro para contraste con el vidrio de fondo */
         .canvas-container {
-            background-color: #ffffff; /* Cambiado de #f8f9fa a blanco puro para contraste */
+            background-color: #ffffff;
             background-image: radial-gradient(#d1d5db 1px, transparent 1px);
             background-size: 20px 20px;
             border: 1px solid #e5e7eb;
@@ -47,7 +47,7 @@ st.markdown("""
             position: relative;
             padding: 80px;
             min-height: 750px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08); /* Sombra ligeramente más pronunciada */
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1); /* Sombra un poco más elegante */
         }
 
         .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin-bottom: 0px; }
@@ -238,4 +238,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_visual.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v3.5 | Con fondo industrial")
+st.caption("🚀 Generador de Planos v3.6 | Fondo Vidriado Claro")
