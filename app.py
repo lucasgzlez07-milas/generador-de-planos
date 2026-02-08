@@ -170,7 +170,6 @@ class HTMLRenderer:
 # ==========================================
 
 def generate_qr_code(url: str) -> BytesIO:
-    """Genera un QR oficial para la aplicación de planos."""
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -179,9 +178,7 @@ def generate_qr_code(url: str) -> BytesIO:
     )
     qr.add_data(url)
     qr.make(fit=True)
-    
     img = qr.make_image(fill_color="#1E3A8A", back_color="white")
-    
     buf = BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
@@ -206,12 +203,10 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configuración")
         
-        # --- BLOQUE 1: DATOS DEL PROYECTO ---
         with st.expander("🗂️ Datos del Proyecto", expanded=True):
             client_name = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
             reference = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
         
-        # --- BLOQUE 2: MEDIDAS Y DIMENSIONES ---
         with st.expander("📏 Medidas y Espesor", expanded=False):
             presets = {"Personalizado": (1200, 800), "Puerta": (900, 2100), "Ventana": (1200, 1200), "Mampara": (800, 1800)}
             preset_selection = st.selectbox("Seleccionar Tipo", list(presets.keys()))
@@ -229,7 +224,6 @@ def main():
             c1.metric("Superficie", f"{round(area, 2)} m²")
             c2.metric("Peso", f"{round(peso, 1)} kg")
 
-        # --- BLOQUE 3: PERFORACIONES ---
         perforations_list = []
         with st.expander("🔘 Perforaciones", expanded=False):
             qty_perf = st.number_input("Cantidad de orificios", 0, 50, key="qty_key")
@@ -243,7 +237,6 @@ def main():
                 if i < int(qty_perf) - 1:
                     st.divider()
 
-        # --- BLOQUE 4: PERSONALIZACIÓN VISUAL ---
         with st.expander("🎨 Estilo Visual", expanded=False):
             style_label = st.radio("Modo de visualización", [s.value for s in VisualStyle], horizontal=True, key="style_key")
             color = st.color_picker("Color de la pieza", "#1E3A8A", key="color_key")
@@ -252,11 +245,16 @@ def main():
         if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
             reset_state()
             
-        # --- BLOQUE 5: QR ACTUALIZADO ---
-        st.markdown("### 📲 Abrir en Celular")
+        # --- BLOQUE 5: COMPARTIR ---
+        st.markdown("### 📲 Compartir App")
         app_url = "https://001-generador-planos.streamlit.app/"
         qr_img = generate_qr_code(app_url)
         st.image(qr_img, caption="Escanea para trabajar desde el celular", use_container_width=True)
+        
+        # Botón para copiar enlace
+        if st.button("🔗 Copiar enlace directo", use_container_width=True):
+            st.code(app_url, language=None)
+            st.success("Enlace listo para copiar arriba 👆")
 
     # Lógica de renderizado
     project_meta = ProjectMetadata(client=client_name, reference=reference)
