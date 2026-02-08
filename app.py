@@ -8,18 +8,17 @@ from reportlab.lib import colors
 st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
 
 # ==========================================
-# 2. ESTILO CSS (Modificado para subir todo al máximo)
+# 2. ESTILO CSS
 # ==========================================
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
         
-        /* AJUSTE CLAVE: Reducir padding superior al mínimo y subir el bloque */
+        /* Ajuste para subir todo el contenido manteniendo el título intacto */
         .block-container { 
-            padding-top: 0.5rem; 
+            padding-top: 1rem; /* Reducido de 2rem a 1rem */
             padding-bottom: 1rem;
-            margin-top: -40px; /* Margen negativo para subir contra el header */
         }
         
         .canvas-container {
@@ -37,15 +36,8 @@ st.markdown("""
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
         }
 
-        /* AJUSTE CLAVE: Eliminar margen superior del título */
-        .main-title { 
-            font-weight: 800; 
-            letter-spacing: -1px; 
-            color: #1e293b; 
-            margin-bottom: 0px; 
-            margin-top: 0px !important;
-            padding-top: 0px;
-        }
+        /* Restaurado el estilo original del título */
+        .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin-bottom: 0px; }
         
         .metric-card {
             background: #ffffff;
@@ -94,8 +86,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Título original restaurado
 st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
-st.markdown('<p style="color:#64748b; margin-top:-5px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
 # 3. Sidebar
 with st.sidebar:
@@ -127,7 +120,6 @@ esc = 0.20
 w_vis = val_ancho * esc
 h_vis = val_alto * esc
 
-# Lógica de apariencia (Control manual por slider)
 if tipo_fig == "Sólida":
     clase_visual = "modo-solido"
 else:
@@ -233,4 +225,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_visual.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v3.3 | Diseño Compacto")
+st.caption("🚀 Generador de Planos v3.4 | Ajuste Superior Compacto")
