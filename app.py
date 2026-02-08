@@ -6,6 +6,7 @@ from reportlab.lib import colors
 from dataclasses import dataclass, field
 from typing import List, Optional
 from enum import Enum
+import qrcode # Librería nueva para el QR
 
 # ==========================================
 # 1. DOMAIN MODELS (Estructura de Datos)
@@ -164,7 +165,21 @@ class HTMLRenderer:
         return f'<div class="canvas-container"><div class="pieza-base {css_class}" style="width: {w_vis}px; height: {h_vis}px; --color-pieza: {glass.color};">{html_perf}<div class="etiqueta-medida etiqueta-ancho">{glass.width} mm</div><div class="etiqueta-medida etiqueta-alto">{glass.height} mm</div></div></div>'
 
 # ==========================================
-# 3. MAIN APPLICATION
+# 3. UTILS (Funciones auxiliares)
+# ==========================================
+
+def generate_qr_code(url: str) -> BytesIO:
+    qr = qrcode.QRCode(version=1, box_size=10, border=2)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#1E3A8A", back_color="white")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+# ==========================================
+# 4. MAIN APPLICATION
 # ==========================================
 
 def reset_state():
@@ -199,7 +214,6 @@ def main():
             thickness_name = st.selectbox("Espesor", list(thickness_opts.keys()), index=1, key="thickness_key")
             thickness_val = thickness_opts[thickness_name]
             
-            # Métricas rápidas dentro del expander
             area = (width * height) / 1_000_000
             peso = area * thickness_val * 2.5
             c1, c2 = st.columns(2)
@@ -228,8 +242,14 @@ def main():
         st.divider()
         if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
             reset_state()
+            
+        # --- BLOQUE 5: QR PARA COMPARTIR ---
+        st.markdown("### 📲 Abrir en Celular")
+        app_url = "https://generador-de-planos-9nvuzimndzvyn9rea5gl83.streamlit.app/"
+        qr_img = generate_qr_code(app_url)
+        st.image(qr_img, caption="Escanea para llevar el plano al taller", use_container_width=True)
 
-    # Lógica de renderizado (se mantiene igual)
+    # Lógica de renderizado
     project_meta = ProjectMetadata(client=client_name, reference=reference)
     glass_specs = GlassSpecifications(width, height, thickness_name, thickness_val, perforations_list, VisualStyle(style_label), color)
 
