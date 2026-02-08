@@ -35,7 +35,6 @@ st.markdown("""
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
         
-        /* Reducimos el padding superior para aprovechar mejor la pantalla */
         .block-container { padding-top: 1rem; padding-bottom: 1rem; }
         
         .canvas-container {
@@ -83,19 +82,16 @@ st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 4. SIDEBAR OPTIMIZADO (UX/UI Lógico)
+# 4. SIDEBAR OPTIMIZADO
 # ==============================================================================
 with st.sidebar:
-    # 1. DATOS DEL PROYECTO (Lo primero que ve el usuario)
     st.header("🗂️ Datos del Proyecto")
     
-    # Inputs compactos y directos arriba
     cliente = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
     obra = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
 
     st.divider()
     
-    # 2. CONFIGURACIÓN TÉCNICA (El núcleo del trabajo)
     tab_medidas, tab_perf, tab_estilo = st.tabs(["📏 Medidas", "🔘 Perforaciones", "🎨 Estilo"])
     
     with tab_medidas:
@@ -115,7 +111,7 @@ with st.sidebar:
             val_ancho = st.number_input("Ancho (mm)", 1, 2300, key="ancho_input", step=10)
             val_alto = st.number_input("Alto (mm)", 1, 2300, key="alto_input", step=10)
         
-        st.markdown("---") # Separador sutil
+        st.markdown("---") 
         
         opciones_espesor = {
             "4 mm": 4, "5 mm": 5, "6 mm": 6, "8 mm": 8, "10 mm": 10, 
@@ -127,7 +123,6 @@ with st.sidebar:
         area_m2 = (val_ancho * val_alto) / 1_000_000
         peso_kg = area_m2 * espesor_valor * 2.5
         
-        # Métricas compactas
         m1, m2 = st.columns(2)
         m1.metric("Superficie", f"{round(area_m2, 2)} m²")
         m2.metric("Peso", f"{round(peso_kg, 1)} kg")
@@ -160,7 +155,6 @@ with st.sidebar:
 
     st.divider()
 
-    # 3. ACCIONES DESTRUCTIVAS (Abajo de todo, para evitar errores)
     if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
         resetear_todo()
         st.rerun()
@@ -346,16 +340,45 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
 
 with col_ficha:
     st.markdown("### 📋 Ficha Técnica")
+    
+    # NUEVO MICRO-LAYOUT Y BADGES
     st.markdown(f'''
     <div class="metric-card" style="border-left: 5px solid {color_p};">
-        <small>Medidas</small><h2>{val_ancho}x{val_alto}</h2>
-        <small style="color: #64748b;">Solicitante: {cliente if cliente else "---"}</small><br>
-        <small style="color: #64748b;">Obra: {obra if obra else "---"}</small>
+        <small style="font-weight: 600; color: #64748b;">MEDIDAS (mm)</small>
+        <h2 style="margin: 0; color: #1e293b;">{val_ancho} x {val_alto}</h2>
+        
+        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #f1f5f9;">
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #64748b; font-size: 0.85rem;">Solicitante:</span>
+                <span style="font-weight: 600; font-size: 0.85rem;">{cliente if cliente else "---"}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #64748b; font-size: 0.85rem;">Obra:</span>
+                <span style="font-weight: 600; font-size: 0.85rem;">{obra if obra else "---"}</span>
+            </div>
+        </div>
+
+        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #f1f5f9;">
+
+        <div style="display: flex; gap: 5px; align-items: center;">
+            <span style="background-color: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">
+                {espesor_nombre}
+            </span>
+            <span style="background-color: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                ⚖️ {round(peso_kg, 1)} kg
+            </span>
+        </div>
     </div>
     ''', unsafe_allow_html=True)
     
+    # Generar PDF
     pdf_file = create_pdf(val_ancho, val_alto, lista_perforaciones, color_p, tipo_fig, num_perf, espesor_nombre, peso_kg, cliente, obra)
+    
+    # MENSAJE DE ÉXITO Y BOTÓN
+    st.success("✅ Documento generado exitosamente")
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name=f"plano_{cliente if cliente else 'sin_nombre'}.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v4.6 | Sidebar Optimizado")
+st.caption("🚀 Generador de Planos v4.7 | Ficha Técnica Premium")
