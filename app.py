@@ -6,7 +6,8 @@ from reportlab.lib import colors
 from dataclasses import dataclass, field
 from typing import List, Optional
 from enum import Enum
-import qrcode # Librería nueva para el QR
+import qrcode
+from PIL import Image
 
 # ==========================================
 # 1. DOMAIN MODELS (Estructura de Datos)
@@ -169,10 +170,19 @@ class HTMLRenderer:
 # ==========================================
 
 def generate_qr_code(url: str) -> BytesIO:
-    qr = qrcode.QRCode(version=1, box_size=10, border=2)
+    """Genera un QR optimizado para lectura en pantallas de celulares."""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=2,
+    )
     qr.add_data(url)
     qr.make(fit=True)
+    
+    # Usamos un azul oscuro profesional para el QR
     img = qr.make_image(fill_color="#1E3A8A", back_color="white")
+    
     buf = BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
@@ -247,7 +257,7 @@ def main():
         st.markdown("### 📲 Abrir en Celular")
         app_url = "https://generador-de-planos-9nvuzimndzvyn9rea5gl83.streamlit.app/"
         qr_img = generate_qr_code(app_url)
-        st.image(qr_img, caption="Escanea para llevar el plano al taller", use_container_width=True)
+        st.image(qr_img, caption="Escanea para trabajar desde el celular", use_container_width=True)
 
     # Lógica de renderizado
     project_meta = ProjectMetadata(client=client_name, reference=reference)

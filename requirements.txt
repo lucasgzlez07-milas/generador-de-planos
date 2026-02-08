@@ -1,4 +1,4 @@
 streamlit
 reportlab
-qrcode
-pillow
+qrcode[pil]
+Pillow
