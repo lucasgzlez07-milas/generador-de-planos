@@ -10,7 +10,7 @@ import qrcode
 from PIL import Image
 
 # ==========================================
-# 1. DOMAIN MODELS
+# 1. DOMAIN MODELS (Estructura de Datos)
 # ==========================================
 
 class VisualStyle(Enum):
@@ -48,7 +48,7 @@ class GlassSpecifications:
         return self.area_m2 * self.thickness_value * 2.5
 
 # ==========================================
-# 2. SERVICES
+# 2. SERVICES (Lógica de Negocio y UI)
 # ==========================================
 
 class CSSService:
@@ -57,37 +57,82 @@ class CSSService:
         st.markdown("""
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+                
+                /* Fuente Global */
                 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+                
+                /* Fondo de la App */
                 .stApp {
-                    background-image: linear-gradient(rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.70)),
+                    background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)),
                     url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2670&auto=format&fit=crop');
-                    background-size: cover; background-attachment: fixed; background-position: center center;
+                    background-size: cover; background-attachment: fixed;
                 }
-                .block-container { padding-top: 1rem; padding-bottom: 1rem; }
+
+                /* --- ESTILO MODERNO SIDEBAR --- */
+                [data-testid="stSidebar"] {
+                    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+                    border-right: 1px solid rgba(255,255,255,0.1);
+                }
+                
+                /* Texto de la Sidebar */
+                [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
+                    color: #f1f5f9 !important;
+                }
+                
+                /* Títulos en Sidebar */
+                [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+                    color: #60a5fa !important;
+                    font-weight: 800;
+                    letter-spacing: -0.5px;
+                }
+
+                /* Estilo de los Expanders en Sidebar */
+                [data-testid="stSidebar"] .streamlit-expanderHeader {
+                    background-color: rgba(255, 255, 255, 0.05) !important;
+                    border-radius: 10px !important;
+                    border: 1px solid rgba(255,255,255,0.1) !important;
+                    color: #60a5fa !important;
+                }
+                [data-testid="stSidebar"] .streamlit-expanderContent {
+                    background-color: rgba(255, 255, 255, 0.02) !important;
+                    border-radius: 0 0 10px 10px !important;
+                }
+
+                /* Inputs en Sidebar */
+                [data-testid="stSidebar"] .stNumberInput input, [data-testid="stSidebar"] .stTextInput input {
+                    background-color: #1e293b !important;
+                    color: white !important;
+                    border: 1px solid #334155 !important;
+                }
+
+                /* --- CANVAS Y CONTENIDO --- */
                 .canvas-container {
                     background-color: #ffffff;
                     background-image: radial-gradient(#d1d5db 1px, transparent 1px);
                     background-size: 20px 20px;
-                    border: 1px solid #e5e7eb; border-radius: 20px;
+                    border: 1px solid #e5e7eb; border-radius: 24px;
                     display: flex; justify-content: center; align-items: center;
                     position: relative; padding: 80px; min-height: 750px;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
                 }
-                .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin: 0; }
+                
+                .main-title { font-weight: 800; letter-spacing: -1.5px; color: #0f172a; margin: 0; }
+                
                 .metric-card {
-                    background: #ffffff; border-radius: 15px; padding: 20px;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #f0f2f6; margin-bottom: 15px;
+                    background: #ffffff; border-radius: 20px; padding: 20px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.04); border: 1px solid #f1f5f9; margin-bottom: 15px;
                 }
-                .pieza-base { position: relative; transition: all 0.3s ease; }
-                .modo-solido { background-color: var(--color-pieza); border: 2px solid #0f172a; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
-                .modo-contorno { background-color: rgba(255,255,255,0.5); border: 4px solid var(--color-pieza); }
+                
+                .pieza-base { position: relative; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+                .modo-solido { background-color: var(--color-pieza); border: 2px solid #0f172a; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+                .modo-contorno { background-color: rgba(255,255,255,0.6); border: 4px solid var(--color-pieza); }
+                
                 .etiqueta-medida {
-                    position: absolute; font-weight: 800; color: #1e293b; font-size: 14px;
-                    background: #f8f9fa; padding: 5px 15px; border: 2px solid #1e293b;
-                    border-radius: 5px; white-space: nowrap; z-index: 10; pointer-events: none;
+                    position: absolute; font-weight: 800; color: #ffffff; font-size: 13px;
+                    background: #0f172a; padding: 4px 12px; border-radius: 6px; white-space: nowrap; z-index: 10;
                 }
-                .etiqueta-ancho { bottom: -50px; left: 50%; transform: translateX(-50%); }
-                .etiqueta-alto { left: -80px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; }
+                .etiqueta-ancho { bottom: -45px; left: 50%; transform: translateX(-50%); }
+                .etiqueta-alto { left: -75px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
             </style>
         """, unsafe_allow_html=True)
 
@@ -109,15 +154,12 @@ class PDFService:
         c.drawRightString(width_a4 - MARGIN - 15, height_a4 - 105, f"ESPESOR: {glass.thickness_name}")
         c.drawRightString(width_a4 - MARGIN - 15, height_a4 - 120, f"PESO: {round(glass.weight_kg, 1)} kg")
         c.line(MARGIN, height_a4 - 130, width_a4 - MARGIN, height_a4 - 130)
-        
         scale = min((width_a4 - 200) / glass.width, (height_a4 - 400) / glass.height)
         start_x, start_y = (width_a4 - (glass.width * scale)) / 2, height_a4 - 250 - (glass.height * scale)
-        
         if glass.style == VisualStyle.SOLIDO:
             c.setFillColor(colors.lightgrey); c.rect(start_x, start_y, glass.width * scale, glass.height * scale, fill=1, stroke=1)
         else:
             c.setStrokeColor(NEGRO); c.setLineWidth(3); c.rect(start_x, start_y, glass.width * scale, glass.height * scale, fill=0, stroke=1)
-            
         for p in glass.perforations:
             cx, cy, r = start_x + (p.x * scale), (start_y + (glass.height * scale)) - (p.y * scale), (p.diameter / 2) * scale
             c.setFillColor(BLANCO); c.setStrokeColor(NEGRO); c.setLineWidth(1.5); c.circle(cx, cy, r, fill=1, stroke=1)
@@ -130,17 +172,14 @@ class PDFService:
             c.setDash()
             PDFService._draw_label(c, str(p.y), cx, (cy + (r if p.y < glass.height/2 else -r) + y_end)/2)
             PDFService._draw_label(c, str(p.x), (cx + (-r if p.x < glass.width/2 else r) + x_end)/2, cy)
-            
         c.setFont("Helvetica-Bold", 12)
         ancho_txt = f"{glass.width} mm"
         w_txt = c.stringWidth(ancho_txt, "Helvetica-Bold", 12)
         c.roundRect(width_a4/2 - w_txt/2 - 10, start_y - 40, w_txt + 20, 20, 4, fill=0, stroke=1)
         c.drawCentredString(width_a4/2, start_y - 34, ancho_txt)
-        
         c.saveState(); c.translate(start_x - 40, start_y + (glass.height * scale)/2); c.rotate(90)
         alto_txt = f"{glass.height} mm"; w_txt_h = c.stringWidth(alto_txt, "Helvetica-Bold", 12)
         c.roundRect(-w_txt_h/2 - 10, -10, w_txt_h + 20, 20, 4, fill=0, stroke=1); c.drawCentredString(0, -4, alto_txt); c.restoreState()
-        
         c.save(); buffer.seek(0)
         return buffer
 
@@ -194,14 +233,14 @@ def main():
     CSSService.inject_styles()
     
     st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
-    st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
+    st.markdown('<p style="color:#64748b; margin-top:-5px; margin-bottom: 20px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
     with st.sidebar:
-        st.header("⚙️ Configuración")
+        st.markdown("<h2 style='margin-bottom:20px;'>⚙️ PANEL TÉCNICO</h2>", unsafe_allow_html=True)
         
         with st.expander("🗂️ Datos del Proyecto", expanded=True):
             client_name = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
-            reference = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
+            reference = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear")
         
         with st.expander("📏 Medidas y Espesor", expanded=False):
             presets = {"Personalizado": (1200, 800), "Puerta": (900, 2100), "Ventana": (1200, 1200), "Mampara": (800, 1800)}
@@ -211,17 +250,8 @@ def main():
             height = st.number_input("Alto (mm)", 1, 2300, value=h_def, step=10, key="height_val")
             st.divider()
             
-            # --- MODIFICACIÓN SOLICITADA AQUÍ ---
-            thickness_opts = {
-                "4 mm": 4, 
-                "5 mm": 5, 
-                "6 mm": 6, 
-                "8 mm": 8, 
-                "10 mm": 10
-            }
-            # -------------------------------------
-            
-            thickness_name = st.selectbox("Espesor", list(thickness_opts.keys()), index=2, key="thickness_key") # index=2 apunta a 6mm por defecto
+            thickness_opts = {"4 mm": 4, "5 mm": 5, "6 mm": 6, "8 mm": 8, "10 mm": 10}
+            thickness_name = st.selectbox("Espesor", list(thickness_opts.keys()), index=2, key="thickness_key")
             thickness_val = thickness_opts[thickness_name]
             
             area = (width * height) / 1_000_000
@@ -240,8 +270,7 @@ def main():
                 py = c2.number_input(f"Y (mm)", 0, height, 100 + (i*50), key=f"py{i}")
                 pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"pd{i}")
                 perforations_list.append(Perforation(i+1, px, py, pd))
-                if i < int(qty_perf) - 1:
-                    st.divider()
+                if i < int(qty_perf) - 1: st.divider()
 
         with st.expander("🎨 Estilo Visual", expanded=False):
             style_label = st.radio("Modo de visualización", [s.value for s in VisualStyle], horizontal=True, key="style_key")
@@ -251,10 +280,10 @@ def main():
         if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
             reset_state()
             
-        st.markdown("### 📲 Compartir App")
+        st.markdown("<br><h3 style='font-size:16px;'>📲 COMPARTIR APP</h3>", unsafe_allow_html=True)
         app_url = "https://001-generador-planos.streamlit.app/"
         qr_img = generate_qr_code(app_url)
-        st.image(qr_img, caption="Escanea para trabajar desde el celular", use_container_width=True)
+        st.image(qr_img, use_container_width=True)
 
     # Lógica de renderizado
     project_meta = ProjectMetadata(client=client_name, reference=reference)
