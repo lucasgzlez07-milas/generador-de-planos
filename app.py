@@ -17,7 +17,6 @@ def resetear_todo():
     st.session_state.ancho_input = 1200
     st.session_state.alto_input = 800
     st.session_state.num_perf_input = 0
-    # No necesitamos resetear perforaciones individuales porque dependen de num_perf
 
 # ==========================================
 # 3. ESTILO CSS
@@ -83,28 +82,23 @@ st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 4. SIDEBAR MEJORADO (CON CLIENTE Y RESET)
+# 4. SIDEBAR MEJORADO (SOLICITANTE)
 # ==============================================================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2312/2312444.png", width=70)
     
-    # --- MEJORA 3: BOTÓN RESET ---
-    # Colocamos el botón arriba para acceso rápido
     if st.button("🗑️ Nueva Ficha / Resetear", type="primary", use_container_width=True):
         resetear_todo()
         st.rerun()
 
     st.markdown("### 📁 Datos del Proyecto")
     
-    # --- MEJORA 1: DATOS DEL CLIENTE ---
-    # Usamos st.session_state para mantener los valores si se recarga la página, 
-    # pero permitimos que el botón reset los borre.
-    cliente = st.text_input("Cliente / Empresa", key="cliente_input", placeholder="Ej. Constructora Norte")
+    # --- CAMBIO AQUI: "Solicitante" en lugar de "Cliente / Empresa" ---
+    cliente = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
     obra = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
 
     st.divider()
     
-    # Pestañas existentes
     tab_medidas, tab_perf, tab_estilo = st.tabs(["📏 Medidas", "🔘 Perforaciones", "🎨 Estilo"])
     
     with tab_medidas:
@@ -117,14 +111,11 @@ with st.sidebar:
         }
         seleccion = st.selectbox("Seleccionar Tipo", list(opciones_medidas.keys()))
         
-        # Si selecciona un preset, usamos esos valores, si es personalizado, usa el session_state
         if seleccion != "Personalizado":
             ancho_default, alto_default = opciones_medidas[seleccion]
-            # Actualizamos inputs si cambia el preset
             val_ancho = st.number_input("Ancho (mm)", 1, 6000, value=ancho_default, step=10, key="ancho_preset_temp")
             val_alto = st.number_input("Alto (mm)", 1, 6000, value=alto_default, step=10, key="alto_preset_temp")
         else:
-            # Usamos las keys vinculadas al Reset
             val_ancho = st.number_input("Ancho (mm)", 1, 6000, key="ancho_input", step=10)
             val_alto = st.number_input("Alto (mm)", 1, 6000, key="alto_input", step=10)
         
@@ -145,7 +136,6 @@ with st.sidebar:
         m2.metric("Peso Aprox.", f"{round(peso_kg, 1)} kg")
 
     with tab_perf:
-        # Vinculamos la cantidad al session_state para que el reset funcione
         num_perf = st.number_input("Cantidad de orificios", 0, 50, key="num_perf_input")
         
         lista_perforaciones = []
@@ -218,7 +208,7 @@ with col_canvas:
     """
     st.markdown(canvas_html.replace("\n", ""), unsafe_allow_html=True)
 
-# 7. Función PDF ACTUALIZADA (Con Cliente y Obra)
+# 7. Función PDF
 def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_nom, peso_val, cliente_nm, obra_ref):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -227,7 +217,7 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
     NEGRO = colors.black
     BLANCO = colors.white
     
-    # 1. Marco de la Página
+    # 1. Marco
     margen_marco = 20
     c.setStrokeColor(NEGRO)
     c.setLineWidth(3)
@@ -240,27 +230,24 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
     c.setLineWidth(1)
     c.line(margen_marco, height - 80, width - margen_marco, height - 80)
     
-    # === DATOS CLIENTE (IZQUIERDA) ===
+    # === CAMBIO AQUI: "SOLICITANTE" en lugar de CLIENTE ===
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(margen_marco + 15, height - 105, f"CLIENTE: {cliente_nm}")
+    c.drawString(margen_marco + 15, height - 105, f"SOLICITANTE: {cliente_nm}")
     c.drawString(margen_marco + 15, height - 120, f"OBRA: {obra_ref}")
     
-    # === DATOS TÉCNICOS (DERECHA) ===
-    # Alineamos a la derecha usando drawRightString
+    # Datos técnicos derecha
     c.drawRightString(width - margen_marco - 15, height - 105, f"ESPESOR: {esp_nom}")
     c.drawRightString(width - margen_marco - 15, height - 120, f"PESO: {round(peso_val, 1)} kg")
     
-    # Línea separadora inferior
     c.line(margen_marco, height - 130, width - margen_marco, height - 130)
-    # ===========================================
 
-    # 3. Lógica de Escala (Ajustada porque el encabezado es más grande ahora)
+    # 3. Escala
     margen = 100
     scale = min((width - margen*2) / ancho_mm, (height - 400) / alto_mm)
     start_x = (width - (ancho_mm * scale)) / 2
     start_y = height - 250 - (alto_mm * scale)
 
-    # 4. Dibujo de la Pieza
+    # 4. Pieza
     if tipo == "Sólida":
         c.setFillColor(colors.lightgrey) 
         c.setStrokeColor(NEGRO)
@@ -271,7 +258,7 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
         c.setLineWidth(3)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=0, stroke=1)
 
-    # 5. Dibujo de Perforaciones y Cotas
+    # 5. Perforaciones
     for i, p in enumerate(perforaciones):
         cx = start_x + (p["x"] * scale)
         cy = (start_y + (alto_mm * scale)) - (p["y"] * scale)
@@ -359,14 +346,14 @@ with col_ficha:
     st.markdown(f'''
     <div class="metric-card" style="border-left: 5px solid {color_p};">
         <small>Medidas</small><h2>{val_ancho}x{val_alto}</h2>
-        <small style="color: #64748b;">Cliente: {cliente if cliente else "---"}</small><br>
+        <small style="color: #64748b;">Solicitante: {cliente if cliente else "---"}</small><br>
         <small style="color: #64748b;">Obra: {obra if obra else "---"}</small>
     </div>
     ''', unsafe_allow_html=True)
     
-    # Pasamos TODOS los datos al PDF
+    # Pasamos los nuevos datos a la función PDF
     pdf_file = create_pdf(val_ancho, val_alto, lista_perforaciones, color_p, tipo_fig, num_perf, espesor_nombre, peso_kg, cliente, obra)
-    st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name=f"plano_{cliente}_{obra}.pdf" if cliente else "plano_tecnico.pdf", mime="application/pdf", use_container_width=True)
+    st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name=f"plano_{cliente if cliente else 'sin_nombre'}.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v4.1 | Datos de Cliente y Reset")
+st.caption("🚀 Generador de Planos v4.2 | Solicitante Amigable")
