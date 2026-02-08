@@ -4,11 +4,11 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 from enum import Enum
 
 # ==========================================
-# 1. DOMAIN MODELS
+# 1. DOMAIN MODELS (Estructura de Datos)
 # ==========================================
 
 class VisualStyle(Enum):
@@ -46,7 +46,7 @@ class GlassSpecifications:
         return self.area_m2 * self.thickness_value * 2.5
 
 # ==========================================
-# 2. SERVICES
+# 2. SERVICES (Lógica de Negocio y UI)
 # ==========================================
 
 class CSSService:
@@ -54,185 +54,185 @@ class CSSService:
     def inject_styles():
         st.markdown("""
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap');
-                
-                :root { --primary-blue: #3b82f6; }
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+                html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
                 
                 .stApp {
-                    background-color: #f8fafc;
-                    background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
-                    background-size: 30px 30px;
+                    background-image: linear-gradient(rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.70)),
+                    url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2670&auto=format&fit=crop');
+                    background-size: cover; background-attachment: fixed; background-position: center center;
                 }
-
-                /* Contenedor del Plano */
-                .canvas-view {
-                    background: #ffffff;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 24px;
-                    padding: 60px;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-                    min-height: 650px;
+                .block-container { padding-top: 1rem; padding-bottom: 1rem; }
+                
+                .canvas-container {
+                    background-color: #ffffff;
+                    background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+                    background-size: 20px 20px;
+                    border: 1px solid #e5e7eb; border-radius: 20px;
+                    display: flex; justify-content: center; align-items: center;
+                    position: relative; padding: 80px; min-height: 750px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
                 }
-
-                /* Tarjetas de Información */
-                .info-card {
-                    background: white;
-                    padding: 1.5rem;
-                    border-radius: 16px;
-                    border: 1px solid #f1f5f9;
-                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-                    margin-bottom: 1rem;
+                .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin: 0; }
+                
+                .metric-card {
+                    background: #ffffff; border-radius: 15px; padding: 20px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #f0f2f6; margin-bottom: 15px;
                 }
-
-                .metric-label { font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
-                .metric-value { font-size: 1.5rem; font-weight: 800; color: #1e293b; }
-
-                /* Estilo de la pieza */
-                .glass-piece {
-                    position: relative;
-                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                
+                .pieza-base { position: relative; transition: all 0.3s ease; }
+                .modo-solido { background-color: var(--color-pieza); border: 2px solid #0f172a; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+                .modo-contorno { background-color: rgba(255,255,255,0.5); border: 4px solid var(--color-pieza); }
+                
+                .etiqueta-medida {
+                    position: absolute; font-weight: 800; color: #1e293b; font-size: 14px;
+                    background: #f8f9fa; padding: 5px 15px; border: 2px solid #1e293b;
+                    border-radius: 5px; white-space: nowrap; z-index: 10; pointer-events: none;
                 }
-                .glass-solid { background: var(--glass-color); border: 2px solid #0f172a; box-shadow: 20px 20px 60px #d1d1d1; }
-                .glass-outline { background: rgba(255,255,255,0.8); border: 3px solid var(--glass-color); }
-
-                /* Etiquetas de Medidas */
-                .dim-label {
-                    position: absolute;
-                    font-family: 'JetBrains Mono', monospace;
-                    font-size: 12px;
-                    font-weight: 700;
-                    background: #1e293b;
-                    color: white;
-                    padding: 4px 10px;
-                    border-radius: 4px;
-                }
-                .dim-w { bottom: -45px; left: 50%; transform: translateX(-50%); }
-                .dim-h { left: -75px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+                .etiqueta-ancho { bottom: -50px; left: 50%; transform: translateX(-50%); }
+                .etiqueta-alto { left: -80px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; }
             </style>
         """, unsafe_allow_html=True)
 
+class PDFService:
+    @staticmethod
+    def generate(project: ProjectMetadata, glass: GlassSpecifications) -> BytesIO:
+        buffer = BytesIO()
+        c = canvas.Canvas(buffer, pagesize=A4)
+        width_a4, height_a4 = A4
+        NEGRO, BLANCO, MARGIN = colors.black, colors.white, 20
+        c.setStrokeColor(NEGRO); c.setLineWidth(3)
+        c.rect(MARGIN, MARGIN, width_a4 - 2*MARGIN, height_a4 - 2*MARGIN)
+        c.setFont("Helvetica-Bold", 22); c.setFillColor(NEGRO)
+        c.drawCentredString(width_a4/2, height_a4 - 60, "PLANO ESTANDARIZADO")
+        c.setLineWidth(1); c.line(MARGIN, height_a4 - 80, width_a4 - MARGIN, height_a4 - 80)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(MARGIN + 15, height_a4 - 105, f"SOLICITANTE: {project.client or '---'}")
+        c.drawString(MARGIN + 15, height_a4 - 120, f"OBRA: {project.reference or '---'}")
+        c.drawRightString(width_a4 - MARGIN - 15, height_a4 - 105, f"ESPESOR: {glass.thickness_name}")
+        c.drawRightString(width_a4 - MARGIN - 15, height_a4 - 120, f"PESO: {round(glass.weight_kg, 1)} kg")
+        c.line(MARGIN, height_a4 - 130, width_a4 - MARGIN, height_a4 - 130)
+        scale = min((width_a4 - 200) / glass.width, (height_a4 - 400) / glass.height)
+        start_x, start_y = (width_a4 - (glass.width * scale)) / 2, height_a4 - 250 - (glass.height * scale)
+        if glass.style == VisualStyle.SOLIDO:
+            c.setFillColor(colors.lightgrey); c.rect(start_x, start_y, glass.width * scale, glass.height * scale, fill=1, stroke=1)
+        else:
+            c.setStrokeColor(NEGRO); c.setLineWidth(3); c.rect(start_x, start_y, glass.width * scale, glass.height * scale, fill=0, stroke=1)
+        for p in glass.perforations:
+            cx, cy, r = start_x + (p.x * scale), (start_y + (glass.height * scale)) - (p.y * scale), (p.diameter / 2) * scale
+            c.setFillColor(BLANCO); c.setStrokeColor(NEGRO); c.setLineWidth(1.5); c.circle(cx, cy, r, fill=1, stroke=1)
+            c.setLineWidth(0.5); c.line(cx - r + 2, cy, cx + r - 2, cy); c.line(cx, cy - r + 2, cx, cy + r - 2)
+            c.setDash(2, 2)
+            y_end = start_y + (glass.height * scale) if p.y < glass.height/2 else start_y
+            c.line(cx, cy + (r if p.y < glass.height/2 else -r), cx, y_end)
+            x_end = start_x if p.x < glass.width/2 else start_x + (glass.width * scale)
+            c.line(cx + (-r if p.x < glass.width/2 else r), cy, x_end, cy)
+            c.setDash()
+            PDFService._draw_label(c, str(p.y), cx, (cy + (r if p.y < glass.height/2 else -r) + y_end)/2)
+            PDFService._draw_label(c, str(p.x), (cx + (-r if p.x < glass.width/2 else r) + x_end)/2, cy)
+        c.setFont("Helvetica-Bold", 12)
+        ancho_txt = f"{glass.width} mm"
+        w_txt = c.stringWidth(ancho_txt, "Helvetica-Bold", 12)
+        c.roundRect(width_a4/2 - w_txt/2 - 10, start_y - 40, w_txt + 20, 20, 4, fill=0, stroke=1)
+        c.drawCentredString(width_a4/2, start_y - 34, ancho_txt)
+        c.saveState(); c.translate(start_x - 40, start_y + (glass.height * scale)/2); c.rotate(90)
+        alto_txt = f"{glass.height} mm"; w_txt_h = c.stringWidth(alto_txt, "Helvetica-Bold", 12)
+        c.roundRect(-w_txt_h/2 - 10, -10, w_txt_h + 20, 20, 4, fill=0, stroke=1); c.drawCentredString(0, -4, alto_txt); c.restoreState()
+        c.save(); buffer.seek(0)
+        return buffer
+
+    @staticmethod
+    def _draw_label(c, text, x, y):
+        c.setFont("Helvetica-Bold", 8); w = c.stringWidth(text, "Helvetica-Bold", 8)
+        c.setFillColor(colors.white); c.setStrokeColor(colors.black); c.setLineWidth(0.5)
+        c.rect(x - w/2 - 2, y - 4, w + 4, 8, fill=1, stroke=1)
+        c.setFillColor(colors.black); c.drawCentredString(x, y - 2.5, text)
+
 class HTMLRenderer:
     @staticmethod
-    def render(glass: GlassSpecifications) -> str:
-        # Escalado dinámico para que siempre quepa en pantalla
-        scale = min(500 / glass.width, 500 / glass.height) if max(glass.width, glass.height) > 0 else 0.2
-        w_px, h_px = glass.width * scale, glass.height * scale
-        
-        style_class = "glass-solid" if glass.style == VisualStyle.SOLIDO else "glass-outline"
-        
-        # Render de perforaciones
-        perfs_html = ""
-        for p in glass.perforations:
-            px, py, pd = p.x * scale, p.y * scale, p.diameter * scale
-            perfs_html += f'''
-                <div style="position: absolute; left: {px-pd/2}px; top: {py-pd/2}px; width: {pd}px; height: {pd}px; 
-                            border: 2px solid #ef4444; border-radius: 50%; background: white; z-index: 10;">
-                    <div style="position: absolute; top: 50%; width: 100%; height: 1px; background: #ef4444; opacity: 0.3;"></div>
-                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: #ef4444; opacity: 0.3;"></div>
-                </div>
-            '''
-
-        return f'''
-            <div class="canvas-view">
-                <div class="glass-piece {style_class}" style="width: {w_px}px; height: {h_px}px; --glass-color: {glass.color};">
-                    {perfs_html}
-                    <div class="dim-label dim-w">{glass.width} mm</div>
-                    <div class="dim-label dim-h">{glass.height} mm</div>
-                </div>
-            </div>
-        '''
+    def render_canvas(glass: GlassSpecifications) -> str:
+        scale = 0.20
+        w_vis, h_vis = glass.width * scale, glass.height * scale
+        css_class = "modo-solido" if glass.style == VisualStyle.SOLIDO else "modo-contorno"
+        html_perf = ""
+        for i, p in enumerate(glass.perforations):
+            px_v, py_v, pd_v = p.x * scale, p.y * scale, p.diameter * scale
+            is_left, is_top, sep = p.x < (glass.width / 2), p.y < (glass.height / 2), 30 + (i * 22)
+            h_line, y_cont, y_lab = (py_v if is_top else (h_vis - py_v)), ("bottom: 50%;" if is_top else "top: 50%;"), ("top: -24px;" if is_top else "bottom: -24px;")
+            w_line, x_cont, x_trans, x_lab = (px_v if is_left else (w_vis - px_v)), ("right: 50%;" if is_left else "left: 50%;"), ("translateX(-100%)" if is_left else "translateX(100%)"), ("left: -10px;" if is_left else "right: -10px;")
+            html_perf += f'<div style="position: absolute; left: {px_v-pd_v/2}px; top: {py_v-pd_v/2}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i}; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;"><div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div><div style="height: 1px; width: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div><div style="position: absolute; {y_cont} left: 50%; width: 1px; height: {h_line + sep}px; border-left: 1px dashed #ef4444;"><span style="position: absolute; {y_lab} left: 50%; transform: translateX(-50%); color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p.y}</span></div><div style="position: absolute; {x_cont} top: 50%; height: 1px; width: {w_line + sep + 40}px; border-top: 1px dashed #ef4444;"><span style="position: absolute; {x_lab} top: 50%; transform: translateY(-50%) {x_trans}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p.x}</span></div></div>'
+        return f'<div class="canvas-container"><div class="pieza-base {css_class}" style="width: {w_vis}px; height: {h_vis}px; --color-pieza: {glass.color};">{html_perf}<div class="etiqueta-medida etiqueta-ancho">{glass.width} mm</div><div class="etiqueta-medida etiqueta-alto">{glass.height} mm</div></div></div>'
 
 # ==========================================
-# 3. MAIN APP
+# 3. MAIN APPLICATION
 # ==========================================
+
+def reset_state():
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
 
 def main():
-    st.set_page_config(page_title="GlassPro | Planos", layout="wide", page_icon="📐")
+    st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
     CSSService.inject_styles()
-
-    # Header con diseño limpio
-    c_title, c_meta = st.columns([2, 1])
-    with c_title:
-        st.markdown('<h1 style="margin-bottom:0;">📐 GlassPro <span style="color:#3b82f6;">Studio</span></h1>', unsafe_allow_html=True)
-        st.caption("Configurador técnico para cristales procesados")
     
+    st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
+    st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
+
     with st.sidebar:
-        st.image("https://cdn-icons-png.flaticon.com/512/1067/1067256.png", width=60)
-        st.title("Configuración")
-        
-        with st.expander("📝 Datos del Cliente", expanded=False):
-            client = st.text_input("Solicitante")
-            ref = st.text_input("Obra/Referencia")
-
-        with st.expander("📏 Dimensiones Base", expanded=True):
-            presets = {"Personalizado": (1200, 800), "Puerta": (900, 2100), "Mampara": (800, 1800)}
-            sel = st.selectbox("Plantilla", list(presets.keys()))
-            w_init, h_init = presets[sel]
-            
-            w = st.number_input("Ancho (mm)", 100, 3000, w_init, 10)
-            h = st.number_input("Alto (mm)", 100, 4000, h_init, 10)
-            
-            thick_opts = {"6 mm": 6, "10 mm": 10, "12 mm": 12, "Laminado 5+5": 10}
-            t_name = st.selectbox("Espesor", list(thick_opts.keys()))
-            t_val = thick_opts[t_name]
-
-        perforations = []
-        with st.expander("🔘 Perforaciones", expanded=False):
-            qty = st.number_input("Cantidad", 0, 20, 0)
-            for i in range(qty):
-                st.markdown(f"**Orificio {i+1}**")
-                col1, col2, col3 = st.columns(3)
-                px = col1.number_input("X", 0, w, 100, key=f"x{i}")
-                py = col2.number_input("Y", 0, h, 100, key=f"y{i}")
-                pd = col3.number_input("Ø", 10, 200, 50, key=f"d{i}")
-                perforations.append(Perforation(i, px, py, pd))
-
-        with st.expander("🎨 Apariencia", expanded=False):
-            v_style = st.radio("Estilo", [s.value for s in VisualStyle], horizontal=True)
-            v_color = st.color_picker("Color Vidrio", "#3b82f6")
-
-    # Logica de Datos
-    specs = GlassSpecifications(w, h, t_name, t_val, perforations, VisualStyle(v_style), v_color)
-    meta = ProjectMetadata(client, ref)
-
-    # Main Layout
-    col_vis, col_data = st.columns([3, 1], gap="large")
-
-    with col_vis:
-        st.markdown(HTMLRenderer.render(specs), unsafe_allow_html=True)
-
-    with col_data:
-        st.markdown('<p class="metric-label">Resumen Técnico</p>', unsafe_allow_html=True)
-        
-        # Tarjetas de Info con CSS personalizado
-        st.markdown(f'''
-            <div class="info-card">
-                <div class="metric-label">Superficie</div>
-                <div class="metric-value">{specs.area_m2:.2f} m²</div>
-            </div>
-            <div class="info-card">
-                <div class="metric-label">Peso Estimado</div>
-                <div class="metric-value">{specs.weight_kg:.1f} kg</div>
-            </div>
-        ''', unsafe_allow_html=True)
+        st.header("🗂️ Datos del Proyecto")
+        client_name = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
+        reference = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
         
         st.divider()
+        tab_dim, tab_perf, tab_style = st.tabs(["📏 Medidas", "🔘 Perforaciones", "🎨 Estilo"])
         
-        from reportlab.lib.pagesizes import A4 # Re-import local si es necesario
-        pdf_file = PDFService.generate(meta, specs)
-        st.download_button(
-            label="📄 Generar Documentación",
-            data=pdf_file,
-            file_name=f"Plano_{client or 'S_N'}.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
-        
-        if st.button("🗑️ Limpiar Todo", use_container_width=True):
-            st.rerun()
+        with tab_dim:
+            presets = {"Personalizado": (1200, 800), "Puerta": (900, 2100), "Ventana": (1200, 1200), "Mampara": (800, 1800)}
+            preset_selection = st.selectbox("Seleccionar Tipo", list(presets.keys()))
+            w_def, h_def = presets[preset_selection]
+            width = st.number_input("Ancho (mm)", 1, 2300, value=w_def, step=10, key="width_val")
+            height = st.number_input("Alto (mm)", 1, 2300, value=h_def, step=10, key="height_val")
+            st.divider()
+            thickness_opts = {"4 mm": 4, "6 mm": 6, "10 mm": 10, "12 mm": 12, "Laminado 5+5": 10}
+            thickness_name = st.selectbox("Espesor", list(thickness_opts.keys()), index=1, key="thickness_key")
+            thickness_val = thickness_opts[thickness_name]
+            area = (width * height) / 1_000_000
+            peso = area * thickness_val * 2.5
+            c1, c2 = st.columns(2)
+            c1.metric("Superficie", f"{round(area, 2)} m²")
+            c2.metric("Peso", f"{round(peso, 1)} kg")
+
+        perforations_list = []
+        with tab_perf:
+            qty_perf = st.number_input("Cantidad orificios", 0, 50, key="qty_key")
+            for i in range(int(qty_perf)):
+                with st.expander(f"📍 Perforación #{i+1}"):
+                    c1, c2, c3 = st.columns(3)
+                    px = c1.number_input(f"X", 0, width, 100 + (i*50), key=f"px{i}")
+                    py = c2.number_input(f"Y", 0, height, 100 + (i*50), key=f"py{i}")
+                    pd = c3.number_input(f"Ø", 1, 200, 50, key=f"pd{i}")
+                    perforations_list.append(Perforation(i+1, px, py, pd))
+
+        with tab_style:
+            style_label = st.radio("Estilo", [s.value for s in VisualStyle], horizontal=True, key="style_key")
+            color = st.color_picker("Color", "#1E3A8A", key="color_key")
+
+        st.divider()
+        if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
+            reset_state()
+
+    project_meta = ProjectMetadata(client=client_name, reference=reference)
+    glass_specs = GlassSpecifications(width, height, thickness_name, thickness_val, perforations_list, VisualStyle(style_label), color)
+
+    col_canvas, col_details = st.columns([3, 1], gap="medium")
+    with col_canvas:
+        st.markdown(HTMLRenderer.render_canvas(glass_specs), unsafe_allow_html=True)
+    with col_details:
+        st.markdown("### 📋 Ficha Técnica")
+        st.markdown(f'''<div class="metric-card" style="border-left: 5px solid {color};"><small>Medidas</small><h2>{width}x{height}</h2><small style="color: #64748b;">Solicitante: {client_name or "---"}</small><br><small style="color: #64748b;">Obra: {reference or "---"}</small><br><hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;"><small style="color: #64748b;">Espesor: <b>{thickness_name}</b></small><br><small style="color: #64748b;">Peso: <b>{round(peso, 1)} kg</b></small></div>''', unsafe_allow_html=True)
+        pdf_bytes = PDFService.generate(project_meta, glass_specs)
+        st.download_button("📥 Descargar PDF", data=pdf_bytes, file_name=f"plano_{client_name or 'sin_nombre'}.pdf", mime="application/pdf", use_container_width=True)
 
 if __name__ == "__main__":
     main()
