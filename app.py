@@ -4,11 +4,11 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from dataclasses import dataclass, field
-from typing import List, Tuple, Optional
+from typing import List, Optional
 from enum import Enum
 
 # ==========================================
-# 1. DOMAIN MODELS (Estructuras de Datos)
+# 1. DOMAIN MODELS (Estructura de Datos)
 # ==========================================
 
 class VisualStyle(Enum):
@@ -50,6 +50,7 @@ class GlassSpecifications:
 # ==========================================
 
 class CSSService:
+    """Maneja toda la inyección de estilos visuales"""
     @staticmethod
     def inject_styles():
         st.markdown("""
@@ -95,6 +96,7 @@ class CSSService:
         """, unsafe_allow_html=True)
 
 class PDFService:
+    """Encapsula la lógica de generación de reportes con ReportLab"""
     @staticmethod
     def generate(project: ProjectMetadata, glass: GlassSpecifications) -> BytesIO:
         buffer = BytesIO()
@@ -105,7 +107,7 @@ class PDFService:
         BLANCO = colors.white
         MARGIN = 20
         
-        # --- 1. Marco y Encabezado ---
+        # --- Marco y Encabezado ---
         c.setStrokeColor(NEGRO)
         c.setLineWidth(3)
         c.rect(MARGIN, MARGIN, width_a4 - 2*MARGIN, height_a4 - 2*MARGIN)
@@ -127,9 +129,8 @@ class PDFService:
         
         c.line(MARGIN, height_a4 - 130, width_a4 - MARGIN, height_a4 - 130)
 
-        # --- 2. Escala y Posicionamiento ---
+        # --- Escala Dinámica ---
         draw_margin = 100
-        # Calcular escala para que quepa en el área disponible
         available_w = width_a4 - draw_margin * 2
         available_h = height_a4 - 400
         scale = min(available_w / glass.width, available_h / glass.height)
@@ -137,7 +138,7 @@ class PDFService:
         start_x = (width_a4 - (glass.width * scale)) / 2
         start_y = height_a4 - 250 - (glass.height * scale)
 
-        # --- 3. Dibujo de la Pieza Base ---
+        # --- Dibujo Pieza Base ---
         if glass.style == VisualStyle.SOLIDO:
             c.setFillColor(colors.lightgrey) 
             c.setStrokeColor(NEGRO)
@@ -148,7 +149,7 @@ class PDFService:
             c.setLineWidth(3)
             c.rect(start_x, start_y, glass.width * scale, glass.height * scale, fill=0, stroke=1)
 
-        # --- 4. Perforaciones ---
+        # --- Perforaciones ---
         for p in glass.perforations:
             cx = start_x + (p.x * scale)
             cy = (start_y + (glass.height * scale)) - (p.y * scale)
@@ -165,25 +166,22 @@ class PDFService:
             c.line(cx - r + 2, cy, cx + r - 2, cy)
             c.line(cx, cy - r + 2, cx, cy + r - 2)
             
-            # --- Cotas Inteligentes ---
+            # --- Cotas Internas ---
             c.setDash(2, 2)
             c.setStrokeColor(NEGRO)
             c.setLineWidth(0.8)
             
             # Cota Y (Vertical)
             is_top_half = p.y >= glass.height / 2
-            y_dest = start_y + (glass.height * scale) if not is_top_half else start_y
+            line_y_endpoint = start_y + (glass.height * scale) if not is_top_half else start_y
             
-            # Nota: En ReportLab Y crece hacia arriba, en lógica de vidrio Y=0 suele ser abajo-izq.
-            # Aquí la lógica original invertía Y visualmente. Mantenemos coherencia visual.
-            line_y_endpoint = start_y + (glass.height * scale) if p.y < glass.height/2 else start_y
-            
-            if p.y < glass.height / 2: # Cota hacia arriba visual (Y pequeña)
-                 c.line(cx, cy + r, cx, line_y_endpoint)
-                 label_y_pos = (cy + r + line_y_endpoint) / 2
-            else: # Cota hacia abajo visual
+            # Lógica de dibujo hacia el borde más cercano
+            if not is_top_half: # Cota hacia abajo visual
                  c.line(cx, cy - r, cx, line_y_endpoint)
                  label_y_pos = (cy - r + line_y_endpoint) / 2
+            else: # Cota hacia arriba visual
+                 c.line(cx, cy + r, cx, line_y_endpoint)
+                 label_y_pos = (cy + r + line_y_endpoint) / 2
 
             # Etiqueta Y
             c.setDash()
@@ -191,8 +189,10 @@ class PDFService:
             c.setDash(2, 2)
 
             # Cota X (Horizontal)
-            line_x_endpoint = start_x if p.x < glass.width/2 else start_x + (glass.width * scale)
-            if p.x < glass.width/2:
+            is_left_half = p.x < glass.width / 2
+            line_x_endpoint = start_x if is_left_half else start_x + (glass.width * scale)
+            
+            if is_left_half:
                  c.line(cx - r, cy, line_x_endpoint, cy)
                  label_x_pos = (cx - r + line_x_endpoint) / 2
             else:
@@ -203,7 +203,7 @@ class PDFService:
             c.setDash()
             PDFService._draw_label(c, str(p.x), label_x_pos, cy)
 
-        # --- 5. Cotas Generales ---
+        # --- Cotas Generales ---
         c.setDash()
         c.setFont("Helvetica-Bold", 12)
         c.setFillColor(NEGRO)
@@ -232,6 +232,7 @@ class PDFService:
 
     @staticmethod
     def _draw_label(c, text, x, y):
+        """Helper para dibujar etiquetas con fondo blanco"""
         c.setFont("Helvetica-Bold", 8)
         w = c.stringWidth(text, "Helvetica-Bold", 8)
         c.setFillColor(colors.white)
@@ -242,6 +243,7 @@ class PDFService:
         c.drawCentredString(x, y - 2.5, text)
 
 class HTMLRenderer:
+    """Genera el HTML/CSS para la visualización en pantalla"""
     @staticmethod
     def render_canvas(glass: GlassSpecifications) -> str:
         scale = 0.20
@@ -250,10 +252,11 @@ class HTMLRenderer:
         
         css_class = "modo-solido" if glass.style == VisualStyle.SOLIDO else "modo-contorno"
         
-        # Generar HTML de perforaciones
         html_perf = ""
         for i, p in enumerate(glass.perforations):
             px_v, py_v, pd_v = p.x * scale, p.y * scale, p.diameter * scale
+            
+            # Lógica de posición de cotas (Espejo de lo que hace el PDF pero en HTML)
             is_left = p.x < (glass.width / 2)
             is_top = p.y < (glass.height / 2)
             sep = 30 + (i * 22)
@@ -261,7 +264,7 @@ class HTMLRenderer:
             left_pos = px_v - (pd_v/2)
             top_pos = py_v - (pd_v/2)
             
-            # Cota Y HTML
+            # Cota Y (Vertical)
             h_line = py_v if is_top else (h_vis - py_v)
             y_container = "bottom: 50%;" if is_top else "top: 50%;"
             y_label_pos = "top: -24px;" if is_top else "bottom: -24px;"
@@ -274,7 +277,7 @@ class HTMLRenderer:
                 </div>
             """
 
-            # Cota X HTML
+            # Cota X (Horizontal)
             w_line = px_v if is_left else (w_vis - px_v)
             x_container = "right: 50%;" if is_left else "left: 50%;"
             x_trans = "translateX(-100%)" if is_left else "translateX(100%)"
@@ -288,7 +291,7 @@ class HTMLRenderer:
                 </div>
             """
             
-            # Ensamblaje del agujero
+            # Agujero completo
             html_perf += f"""
                 <div style="position: absolute; left: {left_pos}px; top: {top_pos}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i}; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;">
                     <div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>
@@ -313,10 +316,12 @@ class HTMLRenderer:
 # ==========================================
 
 def init_session():
+    """Inicializa el estado de la sesión si no existe"""
     if "ancho_input" not in st.session_state:
         reset_state()
 
 def reset_state():
+    """Resetea los valores del formulario"""
     st.session_state.cliente_input = ""
     st.session_state.obra_input = ""
     st.session_state.ancho_input = 1200
@@ -388,5 +393,67 @@ def main():
                 for i in range(int(qty_perf)):
                     with st.expander(f"📍 Perforación #{i+1}", expanded=(i == 0)):
                         c1, c2, c3 = st.columns([1,1,1])
+                        # === CORRECCIÓN DEL SYNTAX ERROR AQUI ===
                         px = c1.number_input(f"X (mm)", 0, width, 100 + (i*150), key=f"x{i}")
-                        py = c2.number_input(f"Y (mm)", 0, height, 100 + (i*150), key
+                        py = c2.number_input(f"Y (mm)", 0, height, 100 + (i*150), key=f"y{i}")
+                        pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"d{i}")
+                        # ========================================
+                        
+                        if px > width or px < 0: st.warning("⚠️ X fuera de rango")
+                        if py > height or py < 0: st.warning("⚠️ Y fuera de rango")
+                        
+                        perforations_list.append(Perforation(i+1, px, py, pd))
+            else:
+                st.caption("Sin perforaciones seleccionadas.")
+
+        # --- Tab Estilo ---
+        with tab_style:
+            style_label = st.radio("Estilo de Visualización", [s.value for s in VisualStyle], horizontal=True)
+            sel_style = VisualStyle(style_label)
+            color = st.color_picker("Color del Vidrio", "#1E3A8A")
+
+        st.divider()
+        if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
+            reset_state()
+            st.rerun()
+
+    # --- Construcción del Objeto Principal ---
+    glass_specs = GlassSpecifications(
+        width=width,
+        height=height,
+        thickness_name=thickness_name,
+        thickness_value=thickness_val,
+        perforations=perforations_list,
+        style=sel_style,
+        color=color
+    )
+
+    # --- Renderizado Principal (Layout) ---
+    col_canvas, col_details = st.columns([3, 1], gap="medium")
+    
+    with col_canvas:
+        st.markdown(HTMLRenderer.render_canvas(glass_specs), unsafe_allow_html=True)
+    
+    with col_details:
+        st.markdown("### 📋 Ficha Técnica")
+        st.markdown(f'''
+        <div class="metric-card" style="border-left: 5px solid {color};">
+            <small>Medidas</small><h2>{width}x{height}</h2>
+            <small style="color: #64748b;">Solicitante: {project_meta.client or "---"}</small><br>
+            <small style="color: #64748b;">Obra: {project_meta.reference or "---"}</small>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        pdf_bytes = PDFService.generate(project_meta, glass_specs)
+        
+        filename = f"plano_{project_meta.client if project_meta.client else 'sin_nombre'}.pdf"
+        st.download_button(
+            label="📥 Descargar Plano PDF",
+            data=pdf_bytes,
+            file_name=filename,
+            mime="application/pdf",
+            use_container_width=True
+        )
+
+if __name__ == "__main__":
+    main()
