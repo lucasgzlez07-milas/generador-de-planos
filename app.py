@@ -70,8 +70,9 @@ class CSSService:
                     background-size: 20px 20px;
                     border: 1px solid #e5e7eb; border-radius: 20px;
                     display: flex; justify-content: center; align-items: center;
-                    position: relative; padding: 80px; min-height: 750px;
+                    position: relative; padding: 60px; min-height: 700px;
                     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                    overflow: hidden;
                 }
                 .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin: 0; }
                 
@@ -80,17 +81,17 @@ class CSSService:
                     box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #f0f2f6; margin-bottom: 15px;
                 }
                 
-                .pieza-base { position: relative; transition: all 0.3s ease; }
+                .pieza-base { position: relative; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
                 .modo-solido { background-color: var(--color-pieza); border: 2px solid #0f172a; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
                 .modo-contorno { background-color: rgba(255,255,255,0.5); border: 4px solid var(--color-pieza); }
                 
                 .etiqueta-medida {
                     position: absolute; font-weight: 800; color: #1e293b; font-size: 14px;
-                    background: #f8f9fa; padding: 5px 15px; border: 2px solid #1e293b;
+                    background: #f8f9fa; padding: 5px 12px; border: 2px solid #1e293b;
                     border-radius: 5px; white-space: nowrap; z-index: 10; pointer-events: none;
                 }
-                .etiqueta-ancho { bottom: -50px; left: 50%; transform: translateX(-50%); }
-                .etiqueta-alto { left: -80px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; }
+                .etiqueta-ancho { bottom: -45px; left: 50%; transform: translateX(-50%); }
+                .etiqueta-alto { left: -75px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; }
             </style>
         """, unsafe_allow_html=True)
 
@@ -151,17 +152,49 @@ class PDFService:
 class HTMLRenderer:
     @staticmethod
     def render_canvas(glass: GlassSpecifications) -> str:
-        scale = 0.20
-        w_vis, h_vis = glass.width * scale, glass.height * scale
+        # ==========================================
+        # IMPLEMENTACIÓN DE ESCALA DINÁMICA
+        # ==========================================
+        # Definimos el tamaño máximo del contenedor visual en píxeles
+        MAX_W, MAX_H = 750, 500
+        
+        # Calculamos el factor de escala que mejor se ajusta
+        # Dejamos un margen del 85% para etiquetas y bordes
+        scale_x = MAX_W / glass.width
+        scale_y = MAX_H / glass.height
+        dynamic_scale = min(scale_x, scale_y) * 0.85
+        
+        w_vis, h_vis = glass.width * dynamic_scale, glass.height * dynamic_scale
         css_class = "modo-solido" if glass.style == VisualStyle.SOLIDO else "modo-contorno"
+        
         html_perf = ""
         for i, p in enumerate(glass.perforations):
-            px_v, py_v, pd_v = p.x * scale, p.y * scale, p.diameter * scale
-            is_left, is_top, sep = p.x < (glass.width / 2), p.y < (glass.height / 2), 30 + (i * 22)
+            px_v, py_v, pd_v = p.x * dynamic_scale, p.y * dynamic_scale, p.diameter * dynamic_scale
+            is_left, is_top, sep = p.x < (glass.width / 2), p.y < (glass.height / 2), 25 + (i * 18)
+            
             h_line, y_cont, y_lab = (py_v if is_top else (h_vis - py_v)), ("bottom: 50%;" if is_top else "top: 50%;"), ("top: -24px;" if is_top else "bottom: -24px;")
             w_line, x_cont, x_trans, x_lab = (px_v if is_left else (w_vis - px_v)), ("right: 50%;" if is_left else "left: 50%;"), ("translateX(-100%)" if is_left else "translateX(100%)"), ("left: -10px;" if is_left else "right: -10px;")
-            html_perf += f'<div style="position: absolute; left: {px_v-pd_v/2}px; top: {py_v-pd_v/2}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i}; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;"><div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div><div style="height: 1px; width: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div><div style="position: absolute; {y_cont} left: 50%; width: 1px; height: {h_line + sep}px; border-left: 1px dashed #ef4444;"><span style="position: absolute; {y_lab} left: 50%; transform: translateX(-50%); color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p.y}</span></div><div style="position: absolute; {x_cont} top: 50%; height: 1px; width: {w_line + sep + 40}px; border-top: 1px dashed #ef4444;"><span style="position: absolute; {x_lab} top: 50%; transform: translateY(-50%) {x_trans}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p.x}</span></div></div>'
-        return f'<div class="canvas-container"><div class="pieza-base {css_class}" style="width: {w_vis}px; height: {h_vis}px; --color-pieza: {glass.color};">{html_perf}<div class="etiqueta-medida etiqueta-ancho">{glass.width} mm</div><div class="etiqueta-medida etiqueta-alto">{glass.height} mm</div></div></div>'
+            
+            html_perf += f'''
+                <div style="position: absolute; left: {px_v-pd_v/2}px; top: {py_v-pd_v/2}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i}; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;">
+                    <div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>
+                    <div style="height: 1px; width: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>
+                    <div style="position: absolute; {y_cont} left: 50%; width: 1px; height: {h_line + sep}px; border-left: 1px dashed #ef4444;">
+                        <span style="position: absolute; {y_lab} left: 50%; transform: translateX(-50%); color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p.y}</span>
+                    </div>
+                    <div style="position: absolute; {x_cont} top: 50%; height: 1px; width: {w_line + sep + 20}px; border-top: 1px dashed #ef4444;">
+                        <span style="position: absolute; {x_lab} top: 50%; transform: translateY(-50%) {x_trans}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p.x}</span>
+                    </div>
+                </div>'''
+                
+        return f'''
+            <div class="canvas-container">
+                <div class="pieza-base {css_class}" style="width: {w_vis}px; height: {h_vis}px; --color-pieza: {glass.color};">
+                    {html_perf}
+                    <div class="etiqueta-medida etiqueta-ancho">{glass.width} mm</div>
+                    <div class="etiqueta-medida etiqueta-alto">{glass.height} mm</div>
+                </div>
+            </div>'''
 
 # ==========================================
 # 3. MAIN APPLICATION
@@ -177,7 +210,7 @@ def main():
     CSSService.inject_styles()
     
     st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
-    st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
+    st.markdown('<p style="color:#64748b; margin-top:-10px;">Visualización dinámica adaptativa con cálculo de proporciones automático</p>', unsafe_allow_html=True)
 
     with st.sidebar:
         st.header("🗂️ Datos del Proyecto")
@@ -197,11 +230,6 @@ def main():
             thickness_opts = {"4 mm": 4, "6 mm": 6, "10 mm": 10, "12 mm": 12, "Laminado 5+5": 10}
             thickness_name = st.selectbox("Espesor", list(thickness_opts.keys()), index=1, key="thickness_key")
             thickness_val = thickness_opts[thickness_name]
-            area = (width * height) / 1_000_000
-            peso = area * thickness_val * 2.5
-            c1, c2 = st.columns(2)
-            c1.metric("Superficie", f"{round(area, 2)} m²")
-            c2.metric("Peso", f"{round(peso, 1)} kg")
 
         perforations_list = []
         with tab_perf:
@@ -222,17 +250,38 @@ def main():
         if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
             reset_state()
 
+    # Instancia de dominio
     project_meta = ProjectMetadata(client=client_name, reference=reference)
     glass_specs = GlassSpecifications(width, height, thickness_name, thickness_val, perforations_list, VisualStyle(style_label), color)
 
     col_canvas, col_details = st.columns([3, 1], gap="medium")
+    
     with col_canvas:
+        # El renderizador ahora calcula la escala basándose en glass_specs
         st.markdown(HTMLRenderer.render_canvas(glass_specs), unsafe_allow_html=True)
+    
     with col_details:
         st.markdown("### 📋 Ficha Técnica")
-        st.markdown(f'''<div class="metric-card" style="border-left: 5px solid {color};"><small>Medidas</small><h2>{width}x{height}</h2><small style="color: #64748b;">Solicitante: {client_name or "---"}</small><br><small style="color: #64748b;">Obra: {reference or "---"}</small><br><hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;"><small style="color: #64748b;">Espesor: <b>{thickness_name}</b></small><br><small style="color: #64748b;">Peso: <b>{round(peso, 1)} kg</b></small></div>''', unsafe_allow_html=True)
+        st.markdown(f'''
+            <div class="metric-card" style="border-left: 5px solid {color};">
+                <small>Medidas</small>
+                <h2>{width}x{height} <span style="font-size: 14px; color: #64748b;">mm</span></h2>
+                <small style="color: #64748b;">Solicitante: {client_name or "---"}</small><br>
+                <small style="color: #64748b;">Obra: {reference or "---"}</small><br>
+                <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
+                <small style="color: #64748b;">Espesor: <b>{thickness_name}</b></small><br>
+                <small style="color: #64748b;">Superficie: <b>{round(glass_specs.area_m2, 2)} m²</b></small><br>
+                <small style="color: #64748b;">Peso: <b>{round(glass_specs.weight_kg, 1)} kg</b></small>
+            </div>''', unsafe_allow_html=True)
+        
         pdf_bytes = PDFService.generate(project_meta, glass_specs)
-        st.download_button("📥 Descargar PDF", data=pdf_bytes, file_name=f"plano_{client_name or 'sin_nombre'}.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button(
+            label="📥 Descargar PDF",
+            data=pdf_bytes,
+            file_name=f"plano_{client_name or 'sin_nombre'}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
 if __name__ == "__main__":
     main()
