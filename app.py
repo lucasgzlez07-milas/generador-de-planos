@@ -105,29 +105,28 @@ class PDFService:
         BLANCO = colors.white
         MARGIN = 20
         
-        # --- Marco y Encabezado ---
+        # Marco
         c.setStrokeColor(NEGRO)
         c.setLineWidth(3)
         c.rect(MARGIN, MARGIN, width_a4 - 2*MARGIN, height_a4 - 2*MARGIN)
         
+        # Encabezado
         c.setFont("Helvetica-Bold", 22)
         c.setFillColor(NEGRO)
         c.drawCentredString(width_a4/2, height_a4 - 60, "PLANO ESTANDARIZADO")
         c.setLineWidth(1)
         c.line(MARGIN, height_a4 - 80, width_a4 - MARGIN, height_a4 - 80)
         
-        # Datos del Proyecto
         c.setFont("Helvetica-Bold", 10)
         c.drawString(MARGIN + 15, height_a4 - 105, f"SOLICITANTE: {project.client or '---'}")
         c.drawString(MARGIN + 15, height_a4 - 120, f"OBRA: {project.reference or '---'}")
         
-        # Datos Técnicos
         c.drawRightString(width_a4 - MARGIN - 15, height_a4 - 105, f"ESPESOR: {glass.thickness_name}")
         c.drawRightString(width_a4 - MARGIN - 15, height_a4 - 120, f"PESO: {round(glass.weight_kg, 1)} kg")
         
         c.line(MARGIN, height_a4 - 130, width_a4 - MARGIN, height_a4 - 130)
 
-        # --- Escala Dinámica ---
+        # Escala
         draw_margin = 100
         available_w = width_a4 - draw_margin * 2
         available_h = height_a4 - 400
@@ -136,7 +135,7 @@ class PDFService:
         start_x = (width_a4 - (glass.width * scale)) / 2
         start_y = height_a4 - 250 - (glass.height * scale)
 
-        # --- Dibujo Pieza Base ---
+        # Pieza
         if glass.style == VisualStyle.SOLIDO:
             c.setFillColor(colors.lightgrey) 
             c.setStrokeColor(NEGRO)
@@ -147,7 +146,7 @@ class PDFService:
             c.setLineWidth(3)
             c.rect(start_x, start_y, glass.width * scale, glass.height * scale, fill=0, stroke=1)
 
-        # --- Perforaciones ---
+        # Perforaciones
         for p in glass.perforations:
             cx = start_x + (p.x * scale)
             cy = (start_y + (glass.height * scale)) - (p.y * scale)
@@ -164,7 +163,6 @@ class PDFService:
             
             c.setDash(2, 2)
             c.setStrokeColor(NEGRO)
-            c.setLineWidth(0.8)
             
             # Cota Y
             is_top_half = p.y >= glass.height / 2
@@ -195,7 +193,7 @@ class PDFService:
             c.setDash()
             PDFService._draw_label(c, str(p.x), label_x_pos, cy)
 
-        # --- Cotas Generales ---
+        # Cotas Generales
         c.setDash()
         c.setFont("Helvetica-Bold", 12)
         c.setFillColor(NEGRO)
@@ -203,8 +201,6 @@ class PDFService:
         # Ancho
         ancho_txt = f"{glass.width} mm"
         w_txt = c.stringWidth(ancho_txt, "Helvetica-Bold", 12)
-        c.setStrokeColor(NEGRO)
-        c.setLineWidth(1)
         c.roundRect(width_a4/2 - w_txt/2 - 10, start_y - 40, w_txt + 20, 20, 4, fill=0, stroke=1)
         c.drawCentredString(width_a4/2, start_y - 34, ancho_txt)
         
@@ -239,13 +235,11 @@ class HTMLRenderer:
         scale = 0.20
         w_vis = glass.width * scale
         h_vis = glass.height * scale
-        
         css_class = "modo-solido" if glass.style == VisualStyle.SOLIDO else "modo-contorno"
         
         html_perf = ""
         for i, p in enumerate(glass.perforations):
             px_v, py_v, pd_v = p.x * scale, p.y * scale, p.diameter * scale
-            
             is_left = p.x < (glass.width / 2)
             is_top = p.y < (glass.height / 2)
             sep = 30 + (i * 22)
@@ -257,45 +251,18 @@ class HTMLRenderer:
             y_container = "bottom: 50%;" if is_top else "top: 50%;"
             y_label_pos = "top: -24px;" if is_top else "bottom: -24px;"
             
-            html_cota_y = f"""
-                <div style="position: absolute; {y_container} left: 50%; width: 1px; height: {h_line + sep}px; border-left: 1px dashed #ef4444;">
-                    <span style="position: absolute; {y_label_pos} left: 50%; transform: translateX(-50%); color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">
-                        {p.y}
-                    </span>
-                </div>
-            """
+            html_cota_y = f"""<div style="position: absolute; {y_container} left: 50%; width: 1px; height: {h_line + sep}px; border-left: 1px dashed #ef4444;"><span style="position: absolute; {y_label_pos} left: 50%; transform: translateX(-50%); color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p.y}</span></div>"""
 
             w_line = px_v if is_left else (w_vis - px_v)
             x_container = "right: 50%;" if is_left else "left: 50%;"
             x_trans = "translateX(-100%)" if is_left else "translateX(100%)"
             x_label_pos = "left: -10px;" if is_left else "right: -10px;"
             
-            html_cota_x = f"""
-                <div style="position: absolute; {x_container} top: 50%; height: 1px; width: {w_line + sep + 40}px; border-top: 1px dashed #ef4444;">
-                    <span style="position: absolute; {x_label_pos} top: 50%; transform: translateY(-50%) {x_trans}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">
-                        {p.x}
-                    </span>
-                </div>
-            """
+            html_cota_x = f"""<div style="position: absolute; {x_container} top: 50%; height: 1px; width: {w_line + sep + 40}px; border-top: 1px dashed #ef4444;"><span style="position: absolute; {x_label_pos} top: 50%; transform: translateY(-50%) {x_trans}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p.x}</span></div>"""
             
-            html_perf += f"""
-                <div style="position: absolute; left: {left_pos}px; top: {top_pos}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i}; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;">
-                    <div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>
-                    <div style="height: 1px; width: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>
-                    {html_cota_y}
-                    {html_cota_x}
-                </div>
-            """
+            html_perf += f"""<div style="position: absolute; left: {left_pos}px; top: {top_pos}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i}; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;"><div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div><div style="height: 1px; width: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>{html_cota_y}{html_cota_x}</div>"""
 
-        return f"""
-        <div class="canvas-container">
-            <div class="pieza-base {css_class}" style="width: {w_vis}px; height: {h_vis}px; --color-pieza: {glass.color};">
-                {html_perf}
-                <div class="etiqueta-medida etiqueta-ancho">{glass.width} mm</div>
-                <div class="etiqueta-medida etiqueta-alto">{glass.height} mm</div>
-            </div>
-        </div>
-        """.replace("\n", "")
+        return f"""<div class="canvas-container"><div class="pieza-base {css_class}" style="width: {w_vis}px; height: {h_vis}px; --color-pieza: {glass.color};">{html_perf}<div class="etiqueta-medida etiqueta-ancho">{glass.width} mm</div><div class="etiqueta-medida etiqueta-alto">{glass.height} mm</div></div></div>""".replace("\n", "")
 
 # ==========================================
 # 3. MAIN APPLICATION CONTROLLER
@@ -317,35 +284,24 @@ def main():
     CSSService.inject_styles()
     init_session()
 
-    # --- Header ---
     st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
     st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
-    # --- Sidebar Controller ---
+    # Inicialización de la lista de perforaciones (CORRECCIÓN NameError)
+    perforations_list = []
+
     with st.sidebar:
-        # CAMBIO 1: Eliminado st.image
-        
-        # Ajuste de cabecera más compacta
         st.header("🗂️ Datos del Proyecto")
-        
         client_name = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
         reference = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
-        
         project_meta = ProjectMetadata(client=client_name, reference=reference)
 
         st.divider()
-        
         tab_dim, tab_perf, tab_style = st.tabs(["📏 Medidas", "🔘 Perforaciones", "🎨 Estilo"])
         
         with tab_dim:
-            presets = {
-                "Personalizado": (1200, 800),
-                "Puerta Estándar (2100x900)": (900, 2100),
-                "Hoja Ventana (1200x1200)": (1200, 1200),
-                "Mampara Baño (1800x800)": (800, 1800)
-            }
+            presets = {"Personalizado": (1200, 800), "Puerta Estándar (2100x900)": (900, 2100), "Hoja Ventana (1200x1200)": (1200, 1200), "Mampara Baño (1800x800)": (800, 1800)}
             preset_selection = st.selectbox("Seleccionar Tipo", list(presets.keys()))
-            
             if preset_selection != "Personalizado":
                 w_def, h_def = presets[preset_selection]
                 width = st.number_input("Ancho (mm)", 1, 2300, value=w_def, step=10, key="ancho_preset")
@@ -355,11 +311,7 @@ def main():
                 height = st.number_input("Alto (mm)", 1, 2300, key="alto_input", step=10)
             
             st.markdown("---")
-            
-            thickness_opts = {
-                "4 mm": 4, "5 mm": 5, "6 mm": 6, "8 mm": 8, "10 mm": 10, 
-                "12 mm": 12, "Laminado 3+3 (6mm)": 6, "Laminado 4+4 (8mm)": 8, "Laminado 5+5 (10mm)": 10
-            }
+            thickness_opts = {"4 mm": 4, "5 mm": 5, "6 mm": 6, "8 mm": 8, "10 mm": 10, "12 mm": 12, "Laminado 3+3 (6mm)": 6, "Laminado 4+4 (8mm)": 8, "Laminado 5+5 (10mm)": 10}
             thickness_name = st.selectbox("Espesor del Vidrio", list(thickness_opts.keys()), index=2)
             thickness_val = thickness_opts[thickness_name]
 
@@ -378,10 +330,8 @@ def main():
                         px = c1.number_input(f"X (mm)", 0, width, 100 + (i*150), key=f"x{i}")
                         py = c2.number_input(f"Y (mm)", 0, height, 100 + (i*150), key=f"y{i}")
                         pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"d{i}")
-                        
                         if px > width or px < 0: st.warning("⚠️ X fuera de rango")
                         if py > height or py < 0: st.warning("⚠️ Y fuera de rango")
-                        
                         perforations_list.append(Perforation(i+1, px, py, pd))
             else:
                 st.caption("Sin perforaciones seleccionadas.")
@@ -396,48 +346,16 @@ def main():
             reset_state()
             st.rerun()
 
-    # --- Construcción del Objeto Principal ---
-    glass_specs = GlassSpecifications(
-        width=width,
-        height=height,
-        thickness_name=thickness_name,
-        thickness_value=thickness_val,
-        perforations=perforations_list,
-        style=sel_style,
-        color=color
-    )
+    glass_specs = GlassSpecifications(width, height, thickness_name, thickness_val, perforations_list, sel_style, color)
 
-    # --- Renderizado Principal (Layout) ---
     col_canvas, col_details = st.columns([3, 1], gap="medium")
-    
     with col_canvas:
         st.markdown(HTMLRenderer.render_canvas(glass_specs), unsafe_allow_html=True)
-    
     with col_details:
         st.markdown("### 📋 Ficha Técnica")
-        
-        # CAMBIO 2: Agregado de datos de ESPESOR y PESO en la tarjeta HTML
-        st.markdown(f'''
-        <div class="metric-card" style="border-left: 5px solid {color};">
-            <small>Medidas</small><h2>{width}x{height}</h2>
-            <small style="color: #64748b;">Solicitante: {project_meta.client or "---"}</small><br>
-            <small style="color: #64748b;">Obra: {project_meta.reference or "---"}</small><br>
-            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
-            <small style="color: #64748b;">Espesor: <b>{thickness_name}</b></small><br>
-            <small style="color: #64748b;">Peso: <b>{round(glass_specs.weight_kg, 1)} kg</b></small>
-        </div>
-        ''', unsafe_allow_html=True)
-        
+        st.markdown(f'''<div class="metric-card" style="border-left: 5px solid {color};"><small>Medidas</small><h2>{width}x{height}</h2><small style="color: #64748b;">Solicitante: {project_meta.client or "---"}</small><br><small style="color: #64748b;">Obra: {project_meta.reference or "---"}</small><br><hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;"><small style="color: #64748b;">Espesor: <b>{thickness_name}</b></small><br><small style="color: #64748b;">Peso: <b>{round(glass_specs.weight_kg, 1)} kg</b></small></div>''', unsafe_allow_html=True)
         pdf_bytes = PDFService.generate(project_meta, glass_specs)
-        
-        filename = f"plano_{project_meta.client if project_meta.client else 'sin_nombre'}.pdf"
-        st.download_button(
-            label="📥 Descargar Plano PDF",
-            data=pdf_bytes,
-            file_name=filename,
-            mime="application/pdf",
-            use_container_width=True
-        )
+        st.download_button(label="📥 Descargar Plano PDF", data=pdf_bytes, file_name=f"plano_{project_meta.client or 'sin_nombre'}.pdf", mime="application/pdf", use_container_width=True)
 
 if __name__ == "__main__":
     main()
