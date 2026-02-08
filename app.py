@@ -82,7 +82,7 @@ st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 4. SIDEBAR MEJORADO (SOLICITANTE)
+# 4. SIDEBAR (Límite 2300mm)
 # ==============================================================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2312/2312444.png", width=70)
@@ -93,7 +93,6 @@ with st.sidebar:
 
     st.markdown("### 📁 Datos del Proyecto")
     
-    # --- CAMBIO AQUI: "Solicitante" en lugar de "Cliente / Empresa" ---
     cliente = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
     obra = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
 
@@ -106,18 +105,20 @@ with st.sidebar:
             "Personalizado": (1200, 800),
             "Puerta Estándar (2100x900)": (900, 2100),
             "Hoja Ventana (1200x1200)": (1200, 1200),
-            "Mampara Baño (1800x800)": (800, 1800),
-            "Plancha Jumbo (2500x3600)": (3600, 2500)
+            "Mampara Baño (1800x800)": (800, 1800)
+            # Jumbo eliminado porque excede 2300mm
         }
         seleccion = st.selectbox("Seleccionar Tipo", list(opciones_medidas.keys()))
         
         if seleccion != "Personalizado":
             ancho_default, alto_default = opciones_medidas[seleccion]
-            val_ancho = st.number_input("Ancho (mm)", 1, 6000, value=ancho_default, step=10, key="ancho_preset_temp")
-            val_alto = st.number_input("Alto (mm)", 1, 6000, value=alto_default, step=10, key="alto_preset_temp")
+            # CAMBIO AQUI: max_value=2300
+            val_ancho = st.number_input("Ancho (mm)", 1, 2300, value=ancho_default, step=10, key="ancho_preset_temp")
+            val_alto = st.number_input("Alto (mm)", 1, 2300, value=alto_default, step=10, key="alto_preset_temp")
         else:
-            val_ancho = st.number_input("Ancho (mm)", 1, 6000, key="ancho_input", step=10)
-            val_alto = st.number_input("Alto (mm)", 1, 6000, key="alto_input", step=10)
+            # CAMBIO AQUI: max_value=2300
+            val_ancho = st.number_input("Ancho (mm)", 1, 2300, key="ancho_input", step=10)
+            val_alto = st.number_input("Alto (mm)", 1, 2300, key="alto_input", step=10)
         
         st.divider()
         
@@ -144,6 +145,7 @@ with st.sidebar:
             for i in range(int(num_perf)):
                 with st.expander(f"📍 Perforación #{i+1}", expanded=(i == 0)):
                     c1, c2, c3 = st.columns([1, 1, 1])
+                    # Limitar coordenadas de perforación al tamaño actual del vidrio (que ya está limitado a 2300)
                     px = c1.number_input(f"X (mm)", 0, val_ancho, 100 + (i*150), key=f"x{i}")
                     py = c2.number_input(f"Y (mm)", 0, val_alto, 100 + (i*150), key=f"y{i}")
                     pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"d{i}")
@@ -230,12 +232,11 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_no
     c.setLineWidth(1)
     c.line(margen_marco, height - 80, width - margen_marco, height - 80)
     
-    # === CAMBIO AQUI: "SOLICITANTE" en lugar de CLIENTE ===
+    # Datos
     c.setFont("Helvetica-Bold", 10)
     c.drawString(margen_marco + 15, height - 105, f"SOLICITANTE: {cliente_nm}")
     c.drawString(margen_marco + 15, height - 120, f"OBRA: {obra_ref}")
     
-    # Datos técnicos derecha
     c.drawRightString(width - margen_marco - 15, height - 105, f"ESPESOR: {esp_nom}")
     c.drawRightString(width - margen_marco - 15, height - 120, f"PESO: {round(peso_val, 1)} kg")
     
@@ -351,9 +352,8 @@ with col_ficha:
     </div>
     ''', unsafe_allow_html=True)
     
-    # Pasamos los nuevos datos a la función PDF
     pdf_file = create_pdf(val_ancho, val_alto, lista_perforaciones, color_p, tipo_fig, num_perf, espesor_nombre, peso_kg, cliente, obra)
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name=f"plano_{cliente if cliente else 'sin_nombre'}.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v4.2 | Solicitante Amigable")
+st.caption("🚀 Generador de Planos v4.3 | Límite Máximo 2300mm")
