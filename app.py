@@ -12,17 +12,31 @@ st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
 # ==========================================
 st.markdown("""
     <style>
+        /* =========================================
+           NUEVO: FONDO DE APLICACIÓN INDUSTRIAL
+           ========================================= */
+        .stApp {
+            /* Se aplica una capa blanca semitransparente sobre la imagen para mantener la legibilidad */
+            background-image: 
+                linear-gradient(rgba(248, 249, 250, 0.85), rgba(248, 249, 250, 0.85)),
+                url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=2670&auto=format&fit=crop');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center center;
+        }
+
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
         
         /* Ajuste para subir todo el contenido manteniendo el título intacto */
         .block-container { 
-            padding-top: 1rem; /* Reducido de 2rem a 1rem */
+            padding-top: 1rem;
             padding-bottom: 1rem;
         }
         
+        /* Canvas Container - Le damos un fondo blanco sólido para que destaque sobre el fondo de la app */
         .canvas-container {
-            background-color: #f8f9fa;
+            background-color: #ffffff; /* Cambiado de #f8f9fa a blanco puro para contraste */
             background-image: radial-gradient(#d1d5db 1px, transparent 1px);
             background-size: 20px 20px;
             border: 1px solid #e5e7eb;
@@ -33,10 +47,9 @@ st.markdown("""
             position: relative;
             padding: 80px;
             min-height: 750px;
-            box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); /* Sombra ligeramente más pronunciada */
         }
 
-        /* Restaurado el estilo original del título */
         .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin-bottom: 0px; }
         
         .metric-card {
@@ -225,4 +238,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_visual.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v3.4 | Ajuste Superior Compacto")
+st.caption("🚀 Generador de Planos v3.5 | Con fondo industrial")
