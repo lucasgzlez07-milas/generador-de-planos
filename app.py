@@ -180,14 +180,15 @@ def main():
     st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
     with st.sidebar:
-        st.header("🗂️ Datos del Proyecto")
-        client_name = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
-        reference = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
+        st.header("⚙️ Configuración")
         
-        st.divider()
-        tab_dim, tab_perf, tab_style = st.tabs(["📏 Medidas", "🔘 Perforaciones", "🎨 Estilo"])
+        # --- BLOQUE 1: DATOS DEL PROYECTO ---
+        with st.expander("🗂️ Datos del Proyecto", expanded=True):
+            client_name = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
+            reference = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
         
-        with tab_dim:
+        # --- BLOQUE 2: MEDIDAS Y DIMENSIONES ---
+        with st.expander("📏 Medidas y Espesor", expanded=False):
             presets = {"Personalizado": (1200, 800), "Puerta": (900, 2100), "Ventana": (1200, 1200), "Mampara": (800, 1800)}
             preset_selection = st.selectbox("Seleccionar Tipo", list(presets.keys()))
             w_def, h_def = presets[preset_selection]
@@ -197,31 +198,38 @@ def main():
             thickness_opts = {"4 mm": 4, "6 mm": 6, "10 mm": 10, "12 mm": 12, "Laminado 5+5": 10}
             thickness_name = st.selectbox("Espesor", list(thickness_opts.keys()), index=1, key="thickness_key")
             thickness_val = thickness_opts[thickness_name]
+            
+            # Métricas rápidas dentro del expander
             area = (width * height) / 1_000_000
             peso = area * thickness_val * 2.5
             c1, c2 = st.columns(2)
             c1.metric("Superficie", f"{round(area, 2)} m²")
             c2.metric("Peso", f"{round(peso, 1)} kg")
 
+        # --- BLOQUE 3: PERFORACIONES ---
         perforations_list = []
-        with tab_perf:
-            qty_perf = st.number_input("Cantidad orificios", 0, 50, key="qty_key")
+        with st.expander("🔘 Perforaciones", expanded=False):
+            qty_perf = st.number_input("Cantidad de orificios", 0, 50, key="qty_key")
             for i in range(int(qty_perf)):
-                with st.expander(f"📍 Perforación #{i+1}"):
-                    c1, c2, c3 = st.columns(3)
-                    px = c1.number_input(f"X", 0, width, 100 + (i*50), key=f"px{i}")
-                    py = c2.number_input(f"Y", 0, height, 100 + (i*50), key=f"py{i}")
-                    pd = c3.number_input(f"Ø", 1, 200, 50, key=f"pd{i}")
-                    perforations_list.append(Perforation(i+1, px, py, pd))
+                st.markdown(f"**📍 Orificio #{i+1}**")
+                c1, c2, c3 = st.columns(3)
+                px = c1.number_input(f"X (mm)", 0, width, 100 + (i*50), key=f"px{i}")
+                py = c2.number_input(f"Y (mm)", 0, height, 100 + (i*50), key=f"py{i}")
+                pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"pd{i}")
+                perforations_list.append(Perforation(i+1, px, py, pd))
+                if i < int(qty_perf) - 1:
+                    st.divider()
 
-        with tab_style:
-            style_label = st.radio("Estilo", [s.value for s in VisualStyle], horizontal=True, key="style_key")
-            color = st.color_picker("Color", "#1E3A8A", key="color_key")
+        # --- BLOQUE 4: PERSONALIZACIÓN VISUAL ---
+        with st.expander("🎨 Estilo Visual", expanded=False):
+            style_label = st.radio("Modo de visualización", [s.value for s in VisualStyle], horizontal=True, key="style_key")
+            color = st.color_picker("Color de la pieza", "#1E3A8A", key="color_key")
 
         st.divider()
         if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
             reset_state()
 
+    # Lógica de renderizado (se mantiene igual)
     project_meta = ProjectMetadata(client=client_name, reference=reference)
     glass_specs = GlassSpecifications(width, height, thickness_name, thickness_val, perforations_list, VisualStyle(style_label), color)
 
