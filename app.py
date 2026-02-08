@@ -34,7 +34,7 @@ st.markdown("""
             padding-bottom: 1rem;
         }
         
-        /* Canvas Container - Fondo blanco puro para contraste con el vidrio de fondo */
+        /* Canvas Container */
         .canvas-container {
             background-color: #ffffff;
             background-image: radial-gradient(#d1d5db 1px, transparent 1px);
@@ -47,7 +47,7 @@ st.markdown("""
             position: relative;
             padding: 80px;
             min-height: 750px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1); /* Sombra un poco más elegante */
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         }
 
         .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin-bottom: 0px; }
@@ -99,7 +99,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Título original restaurado
+# Título
 st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
@@ -138,7 +138,7 @@ if tipo_fig == "Sólida":
 else:
     clase_visual = "modo-contorno"
 
-# Construcción del HTML (Minificado)
+# Construcción del HTML
 html_p = ""
 for i, p in enumerate(lista_perforaciones):
     px_v, py_v, pd_v = p["x"] * esc, p["y"] * esc, p["diam"] * esc
@@ -178,22 +178,35 @@ with col_canvas:
     """
     st.markdown(canvas_html.replace("\n", ""), unsafe_allow_html=True)
 
-# 6. Función PDF
+# 6. Función PDF MEJORADA
 def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
-    c.setStrokeColorRGB(0.9, 0.9, 0.9)
-    for x in range(0, int(width), 20): c.line(x, 0, x, height)
-    for y in range(0, int(height), 20): c.line(0, y, width, y)
-    c.setFont("Helvetica-Bold", 16)
+    
+    # 1. Marco de la Página
+    margen_marco = 20
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(3) # Marco grueso
+    c.rect(margen_marco, margen_marco, width - (2*margen_marco), height - (2*margen_marco))
+    
+    # 2. Encabezado
+    c.setFont("Helvetica-Bold", 22)
     c.setFillColor(colors.black)
-    c.drawString(50, height - 50, "PLANO TÉCNICO DE FABRICACIÓN")
-    margen = 100
-    scale = min((width - margen*2) / ancho_mm, (height - 300) / alto_mm)
-    start_x = (width - (ancho_mm * scale)) / 2
-    start_y = height - 150 - (alto_mm * scale)
+    c.drawCentredString(width/2, height - 70, "PLANO ESTANDARIZADO")
+    
+    # Línea separadora del título
+    c.setLineWidth(1)
+    c.line(margen_marco, height - 90, width - margen_marco, height - 90)
 
+    # 3. Lógica de Escala (Ajustada para respetar el nuevo encabezado)
+    margen = 100
+    # Restamos más altura para no chocar con el título
+    scale = min((width - margen*2) / ancho_mm, (height - 350) / alto_mm)
+    start_x = (width - (ancho_mm * scale)) / 2
+    start_y = height - 200 - (alto_mm * scale) # Bajamos un poco el inicio Y
+
+    # 4. Dibujo de la Pieza
     if tipo == "Sólida":
         c.setFillColor(color_hex)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=1, stroke=1)
@@ -202,6 +215,7 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
         c.setLineWidth(2)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=0, stroke=1)
 
+    # 5. Dibujo de Perforaciones
     for i, p in enumerate(perforaciones):
         cx = start_x + (p["x"] * scale)
         cy = (start_y + (alto_mm * scale)) - (p["y"] * scale)
@@ -210,23 +224,30 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
         c.setStrokeColor(colors.red)
         c.setLineWidth(1)
         c.circle(cx, cy, radio, fill=1, stroke=1)
+        
+        # Cotas Internas
         c.setDash(3, 3)
         c.setStrokeColor(colors.red)
         c.line(cx, cy, cx, cy + (p["y"] * scale if p["y"] < alto_mm/2 else -(alto_mm - p["y"]) * scale))
         c.line(cx, cy, cx + (p["x"] * scale if p["x"] < ancho_mm/2 else -(ancho_mm - p["x"]) * scale), cy)
         c.setDash()
+        
+        # Texto de cotas
         c.setFont("Helvetica-Bold", 7)
         c.setFillColor(colors.red)
         c.drawString(cx + 2, cy + 2, f"X:{p['x']} Y:{p['y']}")
 
+    # 6. Cotas Generales (Externas)
     c.setFont("Helvetica-Bold", 12)
     c.setFillColor(colors.black)
     c.drawCentredString(width/2, start_y - 20, f"ANCHO: {ancho_mm} mm")
+    
     c.saveState()
     c.translate(start_x - 20, start_y + (alto_mm*scale)/2)
     c.rotate(90)
     c.drawCentredString(0, 0, f"ALTO: {alto_mm} mm")
     c.restoreState()
+
     c.save()
     buffer.seek(0)
     return buffer
@@ -238,4 +259,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_visual.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v3.6 | Fondo Vidriado Claro")
+st.caption("🚀 Generador de Planos v3.7 | PDF Profesional")
