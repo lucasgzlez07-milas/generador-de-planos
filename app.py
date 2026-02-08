@@ -56,94 +56,38 @@ class CSSService:
     def inject_styles():
         st.markdown("""
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
-                
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
                 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-                
                 .stApp {
-                    background-color: #ffffff;
-                    background-image: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)),
-                    url('https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2670&auto=format&fit=crop');
-                    background-size: cover;
+                    background-image: linear-gradient(rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.70)),
+                    url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2670&auto=format&fit=crop');
+                    background-size: cover; background-attachment: fixed; background-position: center center;
                 }
-
-                /* --- SIDEBAR DE ALTO CONTRASTE --- */
-                [data-testid="stSidebar"] {
-                    background-color: #f8fafc !important; /* Gris ultra claro */
-                    border-right: 1px solid #e2e8f0;
-                }
-                
-                /* Títulos y etiquetas en Sidebar */
-                [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-                    color: #1e3a8a !important; /* Azul Marino */
-                    font-weight: 800;
-                    margin-bottom: 0.5rem;
-                }
-                
-                [data-testid="stSidebar"] label {
-                    color: #334155 !important; /* Gris oscuro para lectura fácil */
-                    font-weight: 500 !important;
-                    font-size: 0.9rem !important;
-                }
-
-                /* Estilo de Expanders (Acordeones) */
-                [data-testid="stSidebar"] .streamlit-expanderHeader {
-                    background-color: #ffffff !important;
-                    border: 1px solid #e2e8f0 !important;
-                    border-radius: 12px !important;
-                    color: #1e40af !important; /* Azul acento */
-                    font-weight: 600 !important;
-                    margin-bottom: 5px;
-                    transition: all 0.2s ease;
-                }
-                
-                [data-testid="stSidebar"] .streamlit-expanderHeader:hover {
-                    border-color: #3b82f6 !important;
-                    background-color: #f0f9ff !important;
-                }
-
-                /* Inputs y Selects */
-                [data-testid="stSidebar"] .stNumberInput input, 
-                [data-testid="stSidebar"] .stTextInput input,
-                [data-testid="stSidebar"] div[data-baseweb="select"] > div {
-                    background-color: #ffffff !important;
-                    border: 1px solid #cbd5e1 !important;
-                    border-radius: 8px !important;
-                    color: #1e293b !important;
-                }
-
-                /* --- AREA DE TRABAJO (CENTRO) --- */
+                .block-container { padding-top: 1rem; padding-bottom: 1rem; }
                 .canvas-container {
-                    background: #ffffff;
-                    background-image: radial-gradient(#e2e8f0 1.5px, transparent 1.5px);
-                    background-size: 25px 25px;
-                    border: 2px solid #f1f5f9; 
-                    border-radius: 30px;
-                    padding: 60px; 
-                    min-height: 700px;
-                    box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+                    background-color: #ffffff;
+                    background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+                    background-size: 20px 20px;
+                    border: 1px solid #e5e7eb; border-radius: 20px;
                     display: flex; justify-content: center; align-items: center;
+                    position: relative; padding: 80px; min-height: 750px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
                 }
-                
-                .main-title { 
-                    font-weight: 800; 
-                    background: linear-gradient(90deg, #1e3a8a, #3b82f6);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                }
-                
+                .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin: 0; }
                 .metric-card {
-                    background: #ffffff; border-radius: 18px; padding: 20px;
-                    border: 1px solid #e2e8f0;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+                    background: #ffffff; border-radius: 15px; padding: 20px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #f0f2f6; margin-bottom: 15px;
                 }
-                
-                /* Etiquetas de medida en el vidrio */
+                .pieza-base { position: relative; transition: all 0.3s ease; }
+                .modo-solido { background-color: var(--color-pieza); border: 2px solid #0f172a; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+                .modo-contorno { background-color: rgba(255,255,255,0.5); border: 4px solid var(--color-pieza); }
                 .etiqueta-medida {
-                    position: absolute; font-weight: 700; color: #1e293b; font-size: 14px;
-                    background: #ffffff; padding: 5px 12px; border: 2.5px solid #1e3a8a;
-                    border-radius: 8px; white-space: nowrap; z-index: 10;
+                    position: absolute; font-weight: 800; color: #1e293b; font-size: 14px;
+                    background: #f8f9fa; padding: 5px 15px; border: 2px solid #1e293b;
+                    border-radius: 5px; white-space: nowrap; z-index: 10; pointer-events: none;
                 }
+                .etiqueta-ancho { bottom: -50px; left: 50%; transform: translateX(-50%); }
+                .etiqueta-alto { left: -80px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; }
             </style>
         """, unsafe_allow_html=True)
 
@@ -165,12 +109,15 @@ class PDFService:
         c.drawRightString(width_a4 - MARGIN - 15, height_a4 - 105, f"ESPESOR: {glass.thickness_name}")
         c.drawRightString(width_a4 - MARGIN - 15, height_a4 - 120, f"PESO: {round(glass.weight_kg, 1)} kg")
         c.line(MARGIN, height_a4 - 130, width_a4 - MARGIN, height_a4 - 130)
+        
         scale = min((width_a4 - 200) / glass.width, (height_a4 - 400) / glass.height)
         start_x, start_y = (width_a4 - (glass.width * scale)) / 2, height_a4 - 250 - (glass.height * scale)
+        
         if glass.style == VisualStyle.SOLIDO:
             c.setFillColor(colors.lightgrey); c.rect(start_x, start_y, glass.width * scale, glass.height * scale, fill=1, stroke=1)
         else:
             c.setStrokeColor(NEGRO); c.setLineWidth(3); c.rect(start_x, start_y, glass.width * scale, glass.height * scale, fill=0, stroke=1)
+            
         for p in glass.perforations:
             cx, cy, r = start_x + (p.x * scale), (start_y + (glass.height * scale)) - (p.y * scale), (p.diameter / 2) * scale
             c.setFillColor(BLANCO); c.setStrokeColor(NEGRO); c.setLineWidth(1.5); c.circle(cx, cy, r, fill=1, stroke=1)
@@ -183,14 +130,17 @@ class PDFService:
             c.setDash()
             PDFService._draw_label(c, str(p.y), cx, (cy + (r if p.y < glass.height/2 else -r) + y_end)/2)
             PDFService._draw_label(c, str(p.x), (cx + (-r if p.x < glass.width/2 else r) + x_end)/2, cy)
+            
         c.setFont("Helvetica-Bold", 12)
         ancho_txt = f"{glass.width} mm"
         w_txt = c.stringWidth(ancho_txt, "Helvetica-Bold", 12)
         c.roundRect(width_a4/2 - w_txt/2 - 10, start_y - 40, w_txt + 20, 20, 4, fill=0, stroke=1)
         c.drawCentredString(width_a4/2, start_y - 34, ancho_txt)
+        
         c.saveState(); c.translate(start_x - 40, start_y + (glass.height * scale)/2); c.rotate(90)
         alto_txt = f"{glass.height} mm"; w_txt_h = c.stringWidth(alto_txt, "Helvetica-Bold", 12)
         c.roundRect(-w_txt_h/2 - 10, -10, w_txt_h + 20, 20, 4, fill=0, stroke=1); c.drawCentredString(0, -4, alto_txt); c.restoreState()
+        
         c.save(); buffer.seek(0)
         return buffer
 
@@ -243,16 +193,15 @@ def main():
     st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
     CSSService.inject_styles()
     
-    st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#2563eb;">Estandarizado</span></h1>', unsafe_allow_html=True)
-    st.markdown('<p style="color:#475569; margin-top:-10px; margin-bottom: 25px;">Software de precisión para configuración técnica de vidrios</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
+    st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
     with st.sidebar:
-        st.markdown("<h2 style='text-align: center; font-size: 1.5rem;'>⚙️ CONFIGURACIÓN</h2>", unsafe_allow_html=True)
-        st.markdown("<hr style='margin: 10px 0; border: 0; border-top: 2px solid #e2e8f0;'>", unsafe_allow_html=True)
+        st.header("⚙️ Configuración")
         
         with st.expander("🗂️ Datos del Proyecto", expanded=True):
-            client_name = st.text_input("Solicitante", key="cliente_input", placeholder="Ej: Vidriería Central")
-            reference = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej: Edificio Alvear")
+            client_name = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
+            reference = st.text_input("Referencia / Obra", key="obra_input", placeholder="Ej. Edificio Alvear - Piso 3")
         
         with st.expander("📏 Medidas y Espesor", expanded=False):
             presets = {"Personalizado": (1200, 800), "Puerta": (900, 2100), "Ventana": (1200, 1200), "Mampara": (800, 1800)}
@@ -262,8 +211,16 @@ def main():
             height = st.number_input("Alto (mm)", 1, 2300, value=h_def, step=10, key="height_val")
             st.divider()
             
-            thickness_opts = {"4 mm": 4, "5 mm": 5, "6 mm": 6, "8 mm": 8, "10 mm": 10}
-            thickness_name = st.selectbox("Espesor de Vidrio", list(thickness_opts.keys()), index=2, key="thickness_key")
+            # --- MODIFICACIÓN SOLICITADA ---
+            thickness_opts = {
+                "4 mm": 4, 
+                "5 mm": 5, 
+                "6 mm": 6, 
+                "8 mm": 8, 
+                "10 mm": 10
+            }
+            
+            thickness_name = st.selectbox("Espesor", list(thickness_opts.keys()), index=2, key="thickness_key")
             thickness_val = thickness_opts[thickness_name]
             
             area = (width * height) / 1_000_000
@@ -282,7 +239,8 @@ def main():
                 py = c2.number_input(f"Y (mm)", 0, height, 100 + (i*50), key=f"py{i}")
                 pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"pd{i}")
                 perforations_list.append(Perforation(i+1, px, py, pd))
-                if i < int(qty_perf) - 1: st.divider()
+                if i < int(qty_perf) - 1:
+                    st.divider()
 
         with st.expander("🎨 Estilo Visual", expanded=False):
             style_label = st.radio("Modo de visualización", [s.value for s in VisualStyle], horizontal=True, key="style_key")
@@ -292,35 +250,23 @@ def main():
         if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
             reset_state()
             
-        st.markdown("<h3 style='font-size:14px; text-align:center;'>📲 ACCESO MÓVIL</h3>", unsafe_allow_html=True)
+        st.markdown("### 📲 Compartir App")
         app_url = "https://001-generador-planos.streamlit.app/"
         qr_img = generate_qr_code(app_url)
-        st.image(qr_img, use_container_width=True)
+        st.image(qr_img, caption="Escanea para trabajar desde el celular", use_container_width=True)
 
     # Lógica de renderizado
     project_meta = ProjectMetadata(client=client_name, reference=reference)
     glass_specs = GlassSpecifications(width, height, thickness_name, thickness_val, perforations_list, VisualStyle(style_label), color)
 
-    col_canvas, col_details = st.columns([3, 1], gap="large")
+    col_canvas, col_details = st.columns([3, 1], gap="medium")
     with col_canvas:
         st.markdown(HTMLRenderer.render_canvas(glass_specs), unsafe_allow_html=True)
     with col_details:
-        st.markdown("### 📋 Resumen Técnico")
-        st.markdown(f'''<div class="metric-card" style="border-top: 6px solid {color};">
-            <small style="color:#64748b; font-weight:600;">Medidas Finales</small>
-            <h2 style="color:#1e293b; margin:0;">{width} x {height} mm</h2>
-            <p style="margin: 10px 0 0 0; font-size: 0.9rem;">
-                <b>Espesor:</b> {thickness_name}<br>
-                <b>Peso Est.:</b> {round(peso, 1)} kg<br>
-                <b>Área:</b> {round(area, 2)} m²
-            </p>
-            <hr style="margin: 15px 0; border:0; border-top:1px solid #f1f5f9;">
-            <small style="color:#64748b;"><b>Solicitante:</b><br>{client_name or "---"}</small><br>
-            <small style="color:#64748b;"><b>Obra:</b><br>{reference or "---"}</small>
-        </div>''', unsafe_allow_html=True)
-        
+        st.markdown("### 📋 Ficha Técnica")
+        st.markdown(f'''<div class="metric-card" style="border-left: 5px solid {color};"><small>Medidas</small><h2>{width}x{height}</h2><small style="color: #64748b;">Solicitante: {client_name or "---"}</small><br><small style="color: #64748b;">Obra: {reference or "---"}</small><br><hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;"><small style="color: #64748b;">Espesor: <b>{thickness_name}</b></small><br><small style="color: #64748b;">Peso: <b>{round(peso, 1)} kg</b></small></div>''', unsafe_allow_html=True)
         pdf_bytes = PDFService.generate(project_meta, glass_specs)
-        st.download_button("📥 DESCARGAR PLANO PDF", data=pdf_bytes, file_name=f"plano_{client_name or 'glass'}.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button("📥 Descargar PDF", data=pdf_bytes, file_name=f"plano_{client_name or 'sin_nombre'}.pdf", mime="application/pdf", use_container_width=True)
 
 if __name__ == "__main__":
     main()
