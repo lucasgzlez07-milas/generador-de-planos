@@ -7,20 +7,15 @@ from reportlab.lib import colors
 # 1. Configuración de la página
 st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
 
-# Estilo CSS Avanzado
+# ==========================================
+# 2. ESTILO CSS ROBUSTO (CLASES DEFINIDAS)
+# ==========================================
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-        .block-container { padding-top: 2rem; }
-        .metric-card {
-            background: #ffffff;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            border: 1px solid #f0f2f6;
-            margin-bottom: 15px;
-        }
+        
+        /* Contenedor del Canvas */
         .canvas-container {
             background-color: #f8f9fa;
             background-image: radial-gradient(#d1d5db 1px, transparent 1px);
@@ -35,8 +30,48 @@ st.markdown("""
             min-height: 750px;
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
         }
+
+        /* Título */
         .main-title { font-weight: 800; letter-spacing: -1px; color: #1e293b; margin-bottom: 0px; }
-        .medida-etiqueta {
+        
+        /* Tarjeta de métricas */
+        .metric-card {
+            background: #ffffff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #f0f2f6;
+            margin-bottom: 15px;
+        }
+
+        /* =========================================
+           CLASES LÓGICAS PARA LA PIEZA
+           Usamos variables CSS para lo dinámico
+           ========================================= */
+        .pieza-base {
+            position: relative;
+            width: var(--ancho-vis);
+            height: var(--alto-vis);
+            transition: all 0.3s ease;
+        }
+
+        /* Estado: SÓLIDO */
+        .modo-solido {
+            background-color: var(--color-pieza);
+            border: 2px solid #0f172a;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        /* Estado: CONTORNO */
+        .modo-contorno {
+            background-color: rgba(255,255,255,0.5);
+            border: 4px solid var(--color-pieza);
+            box-shadow: none;
+        }
+
+        /* Etiquetas de Medida */
+        .etiqueta-medida {
+            position: absolute;
             font-weight: 800;
             color: #1e293b;
             font-size: 14px;
@@ -45,16 +80,30 @@ st.markdown("""
             border: 2px solid #1e293b;
             border-radius: 5px;
             white-space: nowrap;
-            position: absolute;
-            z-index: 100;
+            z-index: 10;
+            pointer-events: none; /* Evita que interfieran con clics */
         }
+        
+        .etiqueta-ancho {
+            bottom: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .etiqueta-alto {
+            left: -80px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-90deg);
+            transform-origin: center;
+        }
+
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#3b82f6;">Estandarizado</span></h1>', unsafe_allow_html=True)
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
-# 2. Sidebar
+# 3. Sidebar y Entradas
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2312/2312444.png", width=80)
     st.header("Dimensiones Base")
@@ -79,48 +128,62 @@ with st.sidebar:
     tipo_fig = st.select_slider("Estilo de Plano", options=["Solo Contorno", "Sólida"])
     color_p = st.color_picker("Color de la pieza", "#1E3A8A")
 
-# 3. Lógica de Escala Visual
+# 4. Lógica de Visualización (Backend)
 esc = 0.20 
 w_vis = val_ancho * esc
 h_vis = val_alto * esc
 
+# Determinamos la CLASE CSS a usar, no el string de estilos
+# Esto evita errores de sintaxis en el HTML
 if num_perf == 0 or tipo_fig == "Sólida":
-    estilo_f = f"background-color: {color_p}; border: 2px solid #0f172a; box-shadow: 0 10px 30px rgba(0,0,0,0.15);"
+    clase_visual = "modo-solido"
 else:
-    estilo_f = f"background-color: rgba(255,255,255,0.5); border: 4px solid {color_p};"
+    clase_visual = "modo-contorno"
 
-# 4. Construcción HTML MODIFICADA PARA EVITAR EL ERROR DE TEXTO PLANO
-# Inicializamos con un comentario HTML para que nunca esté vacío
-html_p = "" 
+# Generación de Perforaciones (HTML Interno)
+html_p = ""
 for i, p in enumerate(lista_perforaciones):
     px_v, py_v, pd_v = p["x"] * esc, p["y"] * esc, p["diam"] * esc
     c_izq, c_arr = p["x"] < (val_ancho / 2), p["y"] < (val_alto / 2)
     sep = 30 + (i * 22) 
-    html_p += f'<div style="position: absolute; left: {px_v - (pd_v/2)}px; top: {py_v - (pd_v/2)}px; width: {pd_v}px; height: {pd_v}px; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: {60-i};">'
-    html_p += f'<div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div><div style="height: 1px; width: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>'
-    dist_y = py_v if c_arr else (h_vis - py_v)
-    html_p += f'<div style="position: absolute; {"bottom" if c_arr else "top"}: 50%; left: 50%; width: 1px; height: {dist_y + sep}px; border-left: 1px dashed #ef4444;">'
-    html_p += f'<span style="position: absolute; {"top" if c_arr else "bottom"}: -24px; left: 50%; transform: translateX(-50%); color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p["y"]}</span></div>'
-    dist_x = px_v if c_izq else (w_vis - px_v)
-    html_p += f'<div style="position: absolute; {"right" if c_izq else "left"}: 50%; top: 50%; height: 1px; width: {dist_x + sep + 40}px; border-top: 1px dashed #ef4444;">'
-    html_p += f'<span style="position: absolute; {"left" if c_izq else "right"}: -10px; top: 50%; transform: translateY(-50%) {"translateX(-100%)" if c_izq else "translateX(100%)"}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p["x"]}</span></div>'
-    html_p += f'</div>'
+    
+    # Construcción segura de estilos inline solo para posición
+    pos_style = f"left: {px_v - (pd_v/2)}px; top: {py_v - (pd_v/2)}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i};"
+    
+    html_p += f"""
+    <div style="position: absolute; {pos_style} background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;">
+        <div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>
+        <div style="height: 1px; width: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>
+        
+        <div style="position: absolute; {'bottom' if c_arr else 'top'}: 50%; left: 50%; width: 1px; height: {py_v if c_arr else (h_vis - py_v) + sep}px; border-left: 1px dashed #ef4444;">
+            <span style="position: absolute; {'top' if c_arr else 'bottom'}: -24px; left: 50%; transform: translateX(-50%); color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p["y"]}</span>
+        </div>
+        
+        <div style="position: absolute; {'right' if c_izq else 'left'}: 50%; top: 50%; height: 1px; width: {(px_v if c_izq else (w_vis - px_v)) + sep + 40}px; border-top: 1px dashed #ef4444;">
+            <span style="position: absolute; {'left' if c_izq else 'right'}: -10px; top: 50%; transform: translateY(-50%) {'translateX(-100%)' if c_izq else 'translateX(100%)'}; color: #ef4444; font-size: 10px; font-weight: 800; background: white; padding: 2px 6px; border: 1px solid #ef4444; border-radius: 4px;">{p["x"]}</span>
+        </div>
+    </div>
+    """
 
-# 5. Dashboard
+# 5. Renderizado Principal (Frontend Blindado)
 col_canvas, col_ficha = st.columns([3, 1], gap="medium")
 with col_canvas:
-    # Renderizado final limpio
+    # Usamos Variables CSS para inyectar los valores dinámicos
+    # El HTML es ahora limpio y sin lógica compleja inline
     st.markdown(f"""
         <div class="canvas-container">
-            <div style="width: {w_vis}px; height: {h_vis}px; {estilo_f} position: relative;">
+            <div class="pieza-base {clase_visual}" style="--ancho-vis: {w_vis}px; --alto-vis: {h_vis}px; --color-pieza: {color_p};">
+                
                 {html_p}
-                <div class="medida-etiqueta" style="bottom: -60px; left: 0; right: 0; margin: 0 auto; width: fit-content; text-align: center;">{val_ancho} mm</div>
-                <div class="medida-etiqueta" style="left: -150px; top: 50%; transform: translateY(-50%) rotate(-90deg);">{val_alto} mm</div>
+                
+                <div class="etiqueta-medida etiqueta-ancho">{val_ancho} mm</div>
+                <div class="etiqueta-medida etiqueta-alto">{val_alto} mm</div>
+                
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-# 6. Función PDF
+# 6. Función PDF (Backend Lógico)
 def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -136,6 +199,7 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     start_x = (width - (ancho_mm * scale)) / 2
     start_y = height - 150 - (alto_mm * scale)
 
+    # Lógica PDF sincronizada con la visual
     if n_perf == 0 or tipo == "Sólida":
         c.setFillColor(color_hex)
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=1, stroke=1)
@@ -152,6 +216,7 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
         c.setStrokeColor(colors.red)
         c.setLineWidth(1)
         c.circle(cx, cy, radio, fill=1, stroke=1)
+        # Cotas básicas en PDF
         c.setDash(3, 3)
         c.setStrokeColor(colors.red)
         c.line(cx, cy, cx, cy + (p["y"] * scale if p["y"] < alto_mm/2 else -(alto_mm - p["y"]) * scale))
@@ -180,4 +245,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_visual.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v2.7 | Vista sólida automática activada.")
+st.caption("🚀 Generador de Planos v3.0 | Arquitectura Frontend Refactorizada")
