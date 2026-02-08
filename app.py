@@ -58,7 +58,6 @@ st.markdown("""
             margin-bottom: 15px;
         }
 
-        /* Clases para la pieza */
         .pieza-base {
             position: relative;
             transition: all 0.3s ease;
@@ -100,18 +99,16 @@ st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 3. SIDEBAR MEJORADO (AQUÍ ESTÁN LOS CAMBIOS SOLICITADOS)
+# 3. SIDEBAR MEJORADO (CON ESPESOR Y PESO)
 # ==============================================================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2312/2312444.png", width=70)
     st.markdown("### Configuración del Vidrio")
     
-    # MEJORA 1: Organización por Pestañas para limpiar la interfaz
     tab_medidas, tab_perf, tab_estilo = st.tabs(["📏 Medidas", "🔘 Perforaciones", "🎨 Estilo"])
     
     # --- PESTAÑA 1: MEDIDAS ---
     with tab_medidas:
-        # MEJORA 2: Presets de medidas estándar
         opciones_medidas = {
             "Personalizado": (1200, 800),
             "Puerta Estándar (2100x900)": (900, 2100),
@@ -120,8 +117,6 @@ with st.sidebar:
             "Plancha Jumbo (2500x3600)": (3600, 2500)
         }
         seleccion = st.selectbox("Seleccionar Tipo", list(opciones_medidas.keys()))
-        
-        # Lógica para usar preset o manual
         ancho_default, alto_default = opciones_medidas[seleccion]
         disabled_inputs = (seleccion != "Personalizado")
         
@@ -129,7 +124,25 @@ with st.sidebar:
         val_ancho = c1.number_input("Ancho (mm)", 1, 6000, ancho_default, 10, disabled=disabled_inputs, key="ancho_input")
         val_alto = c2.number_input("Alto (mm)", 1, 6000, alto_default, 10, disabled=disabled_inputs, key="alto_input")
         
-        st.info(f"Superficie: {round((val_ancho*val_alto)/1000000, 2)} m²")
+        st.divider()
+        
+        # MEJORA 3: Selector de Espesor
+        # Diccionario para mapear Nombre -> Valor numérico para cálculo
+        opciones_espesor = {
+            "4 mm": 4, "5 mm": 5, "6 mm": 6, "8 mm": 8, "10 mm": 10, 
+            "12 mm": 12, "Laminado 3+3 (6mm)": 6, "Laminado 4+4 (8mm)": 8, "Laminado 5+5 (10mm)": 10
+        }
+        espesor_nombre = st.selectbox("Espesor del Vidrio", list(opciones_espesor.keys()), index=2) # Default 6mm
+        espesor_valor = opciones_espesor[espesor_nombre]
+
+        # MEJORA 4: Cálculo de Peso (Fórmula: m2 * espesor * 2.5)
+        area_m2 = (val_ancho * val_alto) / 1_000_000
+        peso_kg = area_m2 * espesor_valor * 2.5
+        
+        # Mostramos las métricas en la sidebar
+        m1, m2 = st.columns(2)
+        m1.metric("Superficie", f"{round(area_m2, 2)} m²")
+        m2.metric("Peso Aprox.", f"{round(peso_kg, 1)} kg")
 
     # --- PESTAÑA 2: PERFORACIONES ---
     with tab_perf:
@@ -145,16 +158,11 @@ with st.sidebar:
                     py = c2.number_input(f"Y (mm)", 0, val_alto, 100 + (i*150), key=f"y{i}")
                     pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"d{i}")
                     
-                    # MEJORA 3: Validación visual en tiempo real
-                    fuera_rango = False
                     if px > val_ancho or px < 0:
-                        st.warning(f"⚠️ 'X' fuera del vidrio (Max: {val_ancho})")
-                        fuera_rango = True
+                        st.warning(f"⚠️ 'X' fuera del vidrio")
                     if py > val_alto or py < 0:
-                        st.warning(f"⚠️ 'Y' fuera del vidrio (Max: {val_alto})")
-                        fuera_rango = True
+                        st.warning(f"⚠️ 'Y' fuera del vidrio")
                     
-                    # Solo agregamos a la lista, la advertencia es visual para el usuario
                     lista_perforaciones.append({"id": i+1, "x": px, "y": py, "diam": pd})
         else:
             st.caption("Sin perforaciones seleccionadas.")
@@ -215,13 +223,12 @@ with col_canvas:
     """
     st.markdown(canvas_html.replace("\n", ""), unsafe_allow_html=True)
 
-# 6. Función PDF
-def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
+# 6. Función PDF (Ahora incluye Espesor y Peso)
+def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf, esp_nom, peso_val):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
     
-    # Configuramos el color Negro para todo el plano técnico
     NEGRO = colors.black
     BLANCO = colors.white
     
@@ -234,9 +241,15 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     # 2. Encabezado
     c.setFont("Helvetica-Bold", 22)
     c.setFillColor(NEGRO)
-    c.drawCentredString(width/2, height - 70, "PLANO ESTANDARIZADO")
+    c.drawCentredString(width/2, height - 60, "PLANO ESTANDARIZADO")
     c.setLineWidth(1)
-    c.line(margen_marco, height - 90, width - margen_marco, height - 90)
+    c.line(margen_marco, height - 80, width - margen_marco, height - 80)
+    
+    # === NUEVO: SUBTÍTULO CON DATOS TÉCNICOS ===
+    c.setFont("Helvetica", 10)
+    info_text = f"ESPESOR: {esp_nom}  |  PESO APROX: {round(peso_val, 1)} kg  |  PERFORACIONES: {n_perf}"
+    c.drawCentredString(width/2, height - 100, info_text)
+    # ===========================================
 
     # 3. Lógica de Escala
     margen = 100
@@ -244,7 +257,7 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     start_x = (width - (ancho_mm * scale)) / 2
     start_y = height - 200 - (alto_mm * scale)
 
-    # 4. Dibujo de la Pieza (Estilo Técnico)
+    # 4. Dibujo de la Pieza
     if tipo == "Sólida":
         c.setFillColor(colors.lightgrey) 
         c.setStrokeColor(NEGRO)
@@ -274,7 +287,6 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
         c.setStrokeColor(NEGRO)
         c.setLineWidth(0.8)
         
-        # Cota Y
         dist_y_texto = p['y']
         if p["y"] < alto_mm/2: 
             y_dest = start_y + (alto_mm * scale)
@@ -298,7 +310,6 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
         c.drawCentredString(cx, label_y_pos - 2.5, text_y)
         c.setDash(2, 2)
 
-        # Cota X
         if p["x"] < ancho_mm/2:
             x_dest = start_x
             c.line(cx - radio, cy, x_dest, cy)
@@ -345,8 +356,16 @@ def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
 
 with col_ficha:
     st.markdown("### 📋 Ficha Técnica")
-    st.markdown(f'<div class="metric-card" style="border-left: 5px solid {color_p};"><small>Medidas</small><h2>{val_ancho}x{val_alto}</h2></div>', unsafe_allow_html=True)
-    pdf_file = create_pdf(val_ancho, val_alto, lista_perforaciones, color_p, tipo_fig, num_perf)
+    # Actualizado con datos de espesor y peso
+    st.markdown(f'''
+    <div class="metric-card" style="border-left: 5px solid {color_p};">
+        <small>Medidas</small><h2>{val_ancho}x{val_alto}</h2>
+        <small style="color: #64748b;">Espesor: {espesor_nombre} | Peso: ~{round(peso_kg, 1)} kg</small>
+    </div>
+    ''', unsafe_allow_html=True)
+    
+    # Pasamos los nuevos datos a la función PDF
+    pdf_file = create_pdf(val_ancho, val_alto, lista_perforaciones, color_p, tipo_fig, num_perf, espesor_nombre, peso_kg)
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_tecnico_bn.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
