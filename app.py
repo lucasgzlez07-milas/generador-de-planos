@@ -50,7 +50,6 @@ class GlassSpecifications:
 # ==========================================
 
 class CSSService:
-    """Maneja toda la inyección de estilos visuales"""
     @staticmethod
     def inject_styles():
         st.markdown("""
@@ -96,7 +95,6 @@ class CSSService:
         """, unsafe_allow_html=True)
 
 class PDFService:
-    """Encapsula la lógica de generación de reportes con ReportLab"""
     @staticmethod
     def generate(project: ProjectMetadata, glass: GlassSpecifications) -> BytesIO:
         buffer = BytesIO()
@@ -155,40 +153,35 @@ class PDFService:
             cy = (start_y + (glass.height * scale)) - (p.y * scale)
             r = (p.diameter / 2) * scale
             
-            # Círculo
             c.setFillColor(BLANCO)
             c.setStrokeColor(NEGRO)
             c.setLineWidth(1.5)
             c.circle(cx, cy, r, fill=1, stroke=1)
             
-            # Mirilla (Cruz)
             c.setLineWidth(0.5)
             c.line(cx - r + 2, cy, cx + r - 2, cy)
             c.line(cx, cy - r + 2, cx, cy + r - 2)
             
-            # --- Cotas Internas ---
             c.setDash(2, 2)
             c.setStrokeColor(NEGRO)
             c.setLineWidth(0.8)
             
-            # Cota Y (Vertical)
+            # Cota Y
             is_top_half = p.y >= glass.height / 2
             line_y_endpoint = start_y + (glass.height * scale) if not is_top_half else start_y
             
-            # Lógica de dibujo hacia el borde más cercano
-            if not is_top_half: # Cota hacia abajo visual
+            if not is_top_half: 
                  c.line(cx, cy - r, cx, line_y_endpoint)
                  label_y_pos = (cy - r + line_y_endpoint) / 2
-            else: # Cota hacia arriba visual
+            else: 
                  c.line(cx, cy + r, cx, line_y_endpoint)
                  label_y_pos = (cy + r + line_y_endpoint) / 2
 
-            # Etiqueta Y
             c.setDash()
             PDFService._draw_label(c, str(p.y), cx, label_y_pos)
             c.setDash(2, 2)
 
-            # Cota X (Horizontal)
+            # Cota X
             is_left_half = p.x < glass.width / 2
             line_x_endpoint = start_x if is_left_half else start_x + (glass.width * scale)
             
@@ -199,7 +192,6 @@ class PDFService:
                  c.line(cx + r, cy, line_x_endpoint, cy)
                  label_x_pos = (cx + r + line_x_endpoint) / 2
             
-            # Etiqueta X
             c.setDash()
             PDFService._draw_label(c, str(p.x), label_x_pos, cy)
 
@@ -232,7 +224,6 @@ class PDFService:
 
     @staticmethod
     def _draw_label(c, text, x, y):
-        """Helper para dibujar etiquetas con fondo blanco"""
         c.setFont("Helvetica-Bold", 8)
         w = c.stringWidth(text, "Helvetica-Bold", 8)
         c.setFillColor(colors.white)
@@ -243,7 +234,6 @@ class PDFService:
         c.drawCentredString(x, y - 2.5, text)
 
 class HTMLRenderer:
-    """Genera el HTML/CSS para la visualización en pantalla"""
     @staticmethod
     def render_canvas(glass: GlassSpecifications) -> str:
         scale = 0.20
@@ -256,7 +246,6 @@ class HTMLRenderer:
         for i, p in enumerate(glass.perforations):
             px_v, py_v, pd_v = p.x * scale, p.y * scale, p.diameter * scale
             
-            # Lógica de posición de cotas (Espejo de lo que hace el PDF pero en HTML)
             is_left = p.x < (glass.width / 2)
             is_top = p.y < (glass.height / 2)
             sep = 30 + (i * 22)
@@ -264,7 +253,6 @@ class HTMLRenderer:
             left_pos = px_v - (pd_v/2)
             top_pos = py_v - (pd_v/2)
             
-            # Cota Y (Vertical)
             h_line = py_v if is_top else (h_vis - py_v)
             y_container = "bottom: 50%;" if is_top else "top: 50%;"
             y_label_pos = "top: -24px;" if is_top else "bottom: -24px;"
@@ -277,7 +265,6 @@ class HTMLRenderer:
                 </div>
             """
 
-            # Cota X (Horizontal)
             w_line = px_v if is_left else (w_vis - px_v)
             x_container = "right: 50%;" if is_left else "left: 50%;"
             x_trans = "translateX(-100%)" if is_left else "translateX(100%)"
@@ -291,7 +278,6 @@ class HTMLRenderer:
                 </div>
             """
             
-            # Agujero completo
             html_perf += f"""
                 <div style="position: absolute; left: {left_pos}px; top: {top_pos}px; width: {pd_v}px; height: {pd_v}px; z-index: {60-i}; background: white; border: 2px solid #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center;">
                     <div style="width: 1px; height: 100%; background: #ef4444; position: absolute; opacity: 0.5;"></div>
@@ -316,12 +302,10 @@ class HTMLRenderer:
 # ==========================================
 
 def init_session():
-    """Inicializa el estado de la sesión si no existe"""
     if "ancho_input" not in st.session_state:
         reset_state()
 
 def reset_state():
-    """Resetea los valores del formulario"""
     st.session_state.cliente_input = ""
     st.session_state.obra_input = ""
     st.session_state.ancho_input = 1200
@@ -339,7 +323,9 @@ def main():
 
     # --- Sidebar Controller ---
     with st.sidebar:
-        st.image("https://cdn-icons-png.flaticon.com/512/3586/3586131.png", width=70)
+        # CAMBIO 1: Eliminado st.image
+        
+        # Ajuste de cabecera más compacta
         st.header("🗂️ Datos del Proyecto")
         
         client_name = st.text_input("Solicitante", key="cliente_input", placeholder="Nombre o Razón Social")
@@ -351,7 +337,6 @@ def main():
         
         tab_dim, tab_perf, tab_style = st.tabs(["📏 Medidas", "🔘 Perforaciones", "🎨 Estilo"])
         
-        # --- Tab Medidas ---
         with tab_dim:
             presets = {
                 "Personalizado": (1200, 800),
@@ -378,14 +363,11 @@ def main():
             thickness_name = st.selectbox("Espesor del Vidrio", list(thickness_opts.keys()), index=2)
             thickness_val = thickness_opts[thickness_name]
 
-            # Live Metrics
             temp_glass = GlassSpecifications(width, height, thickness_name, thickness_val)
             c1, c2 = st.columns(2)
             c1.metric("Superficie", f"{round(temp_glass.area_m2, 2)} m²")
             c2.metric("Peso", f"{round(temp_glass.weight_kg, 1)} kg")
 
-        # --- Tab Perforaciones ---
-        perforations_list = []
         with tab_perf:
             qty_perf = st.number_input("Cantidad de orificios", 0, 50, key="num_perf_input")
             if qty_perf > 0:
@@ -393,11 +375,9 @@ def main():
                 for i in range(int(qty_perf)):
                     with st.expander(f"📍 Perforación #{i+1}", expanded=(i == 0)):
                         c1, c2, c3 = st.columns([1,1,1])
-                        # === CORRECCIÓN DEL SYNTAX ERROR AQUI ===
                         px = c1.number_input(f"X (mm)", 0, width, 100 + (i*150), key=f"x{i}")
                         py = c2.number_input(f"Y (mm)", 0, height, 100 + (i*150), key=f"y{i}")
                         pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"d{i}")
-                        # ========================================
                         
                         if px > width or px < 0: st.warning("⚠️ X fuera de rango")
                         if py > height or py < 0: st.warning("⚠️ Y fuera de rango")
@@ -406,7 +386,6 @@ def main():
             else:
                 st.caption("Sin perforaciones seleccionadas.")
 
-        # --- Tab Estilo ---
         with tab_style:
             style_label = st.radio("Estilo de Visualización", [s.value for s in VisualStyle], horizontal=True)
             sel_style = VisualStyle(style_label)
@@ -436,11 +415,16 @@ def main():
     
     with col_details:
         st.markdown("### 📋 Ficha Técnica")
+        
+        # CAMBIO 2: Agregado de datos de ESPESOR y PESO en la tarjeta HTML
         st.markdown(f'''
         <div class="metric-card" style="border-left: 5px solid {color};">
             <small>Medidas</small><h2>{width}x{height}</h2>
             <small style="color: #64748b;">Solicitante: {project_meta.client or "---"}</small><br>
-            <small style="color: #64748b;">Obra: {project_meta.reference or "---"}</small>
+            <small style="color: #64748b;">Obra: {project_meta.reference or "---"}</small><br>
+            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
+            <small style="color: #64748b;">Espesor: <b>{thickness_name}</b></small><br>
+            <small style="color: #64748b;">Peso: <b>{round(glass_specs.weight_kg, 1)} kg</b></small>
         </div>
         ''', unsafe_allow_html=True)
         
