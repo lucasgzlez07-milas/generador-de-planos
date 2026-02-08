@@ -170,7 +170,7 @@ class HTMLRenderer:
 # ==========================================
 
 def generate_qr_code(url: str) -> BytesIO:
-    """Genera un QR optimizado para lectura en pantallas de celulares."""
+    """Genera un QR optimizado para pruebas de redirección."""
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -180,7 +180,6 @@ def generate_qr_code(url: str) -> BytesIO:
     qr.add_data(url)
     qr.make(fit=True)
     
-    # Usamos un azul oscuro profesional para el QR
     img = qr.make_image(fill_color="#1E3A8A", back_color="white")
     
     buf = BytesIO()
@@ -253,11 +252,12 @@ def main():
         if st.button("🗑️ Resetear Ficha", type="secondary", use_container_width=True):
             reset_state()
             
-        # --- BLOQUE 5: QR PARA COMPARTIR ---
-        st.markdown("### 📲 Abrir en Celular")
-        app_url = "https://generador-de-planos-9nvuzimndzvyn9rea5gl83.streamlit.app/"
-        qr_img = generate_qr_code(app_url)
-        st.image(qr_img, caption="Escanea para trabajar desde el celular", use_container_width=True)
+        # --- BLOQUE 5: QR PARA PRUEBA DE REDIRECCIÓN ---
+        st.markdown("### 📲 Prueba de Redirección")
+        # Cambiamos la URL a Google para verificar funcionamiento
+        test_url = "https://www.google.com" 
+        qr_img = generate_qr_code(test_url)
+        st.image(qr_img, caption="Escanea para probar: debe ir a Google", use_container_width=True)
 
     # Lógica de renderizado
     project_meta = ProjectMetadata(client=client_name, reference=reference)
