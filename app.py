@@ -3,6 +3,7 @@ from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
+from reportlab.lib.colors import HexColor # Importante para usar los colores exactos de la web
 
 # 1. Configuración de la página
 st.set_page_config(page_title="Generador de Plano Estandarizado", layout="wide")
@@ -16,7 +17,6 @@ st.markdown("""
            FONDO DE EDIFICIO VIDRIADO (MODERNO)
            ========================================= */
         .stApp {
-            /* Capa semitransparente más clara: Blanco puro (255,255,255) al 70% de opacidad */
             background-image: 
                 linear-gradient(rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.70)),
                 url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2670&auto=format&fit=crop');
@@ -28,13 +28,11 @@ st.markdown("""
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
         
-        /* Ajuste para subir todo el contenido manteniendo el título intacto */
         .block-container { 
             padding-top: 1rem;
             padding-bottom: 1rem;
         }
         
-        /* Canvas Container */
         .canvas-container {
             background-color: #ffffff;
             background-image: radial-gradient(#d1d5db 1px, transparent 1px);
@@ -78,7 +76,6 @@ st.markdown("""
             border: 4px solid var(--color-pieza);
         }
 
-        /* Etiquetas de Medida */
         .etiqueta-medida {
             position: absolute;
             font-weight: 800;
@@ -178,74 +175,120 @@ with col_canvas:
     """
     st.markdown(canvas_html.replace("\n", ""), unsafe_allow_html=True)
 
-# 6. Función PDF MEJORADA
+# 6. Función PDF REINGENIERIZADA (Visualización "Gemela")
 def create_pdf(ancho_mm, alto_mm, perforaciones, color_hex, tipo, n_perf):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
     
+    # Colores CSS exactos traducidos a ReportLab
+    rojo_css = HexColor('#ef4444')
+    borde_oscuro = HexColor('#0f172a')
+    color_pieza = HexColor(color_hex)
+    
     # 1. Marco de la Página
     margen_marco = 20
     c.setStrokeColor(colors.black)
-    c.setLineWidth(3) # Marco grueso
+    c.setLineWidth(3)
     c.rect(margen_marco, margen_marco, width - (2*margen_marco), height - (2*margen_marco))
     
     # 2. Encabezado
     c.setFont("Helvetica-Bold", 22)
     c.setFillColor(colors.black)
     c.drawCentredString(width/2, height - 70, "PLANO ESTANDARIZADO")
-    
-    # Línea separadora del título
     c.setLineWidth(1)
     c.line(margen_marco, height - 90, width - margen_marco, height - 90)
 
-    # 3. Lógica de Escala (Ajustada para respetar el nuevo encabezado)
+    # 3. Lógica de Escala
     margen = 100
-    # Restamos más altura para no chocar con el título
     scale = min((width - margen*2) / ancho_mm, (height - 350) / alto_mm)
     start_x = (width - (ancho_mm * scale)) / 2
-    start_y = height - 200 - (alto_mm * scale) # Bajamos un poco el inicio Y
+    start_y = height - 200 - (alto_mm * scale)
 
-    # 4. Dibujo de la Pieza
+    # 4. Dibujo de la Pieza (Estilo Web)
     if tipo == "Sólida":
-        c.setFillColor(color_hex)
+        # Relleno de color + Borde fino oscuro (Igual a .modo-solido)
+        c.setFillColor(color_pieza)
+        c.setStrokeColor(borde_oscuro)
+        c.setLineWidth(2) # Grosor del borde sólido en CSS
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=1, stroke=1)
     else:
-        c.setStrokeColor(color_hex)
-        c.setLineWidth(2)
+        # Sin relleno + Borde grueso del color (Igual a .modo-contorno)
+        c.setStrokeColor(color_pieza)
+        c.setLineWidth(4) # Grosor del borde contorno en CSS
         c.rect(start_x, start_y, ancho_mm * scale, alto_mm * scale, fill=0, stroke=1)
 
-    # 5. Dibujo de Perforaciones
+    # 5. Dibujo de Perforaciones (Estilo Web)
     for i, p in enumerate(perforaciones):
         cx = start_x + (p["x"] * scale)
         cy = (start_y + (alto_mm * scale)) - (p["y"] * scale)
         radio = (p["diam"] / 2) * scale
+        
+        # Círculo blanco con borde rojo
         c.setFillColor(colors.white)
-        c.setStrokeColor(colors.red)
-        c.setLineWidth(1)
+        c.setStrokeColor(rojo_css)
+        c.setLineWidth(2) # Borde del círculo
         c.circle(cx, cy, radio, fill=1, stroke=1)
         
-        # Cotas Internas
-        c.setDash(3, 3)
-        c.setStrokeColor(colors.red)
-        c.line(cx, cy, cx, cy + (p["y"] * scale if p["y"] < alto_mm/2 else -(alto_mm - p["y"]) * scale))
-        c.line(cx, cy, cx + (p["x"] * scale if p["x"] < ancho_mm/2 else -(ancho_mm - p["x"]) * scale), cy)
-        c.setDash()
+        # Cruces internas (Mirilla)
+        c.setLineWidth(1)
+        c.setStrokeColor(rojo_css) # Rojo semitransparente visualmente es rojo fino aquí
+        c.line(cx - radio, cy, cx + radio, cy) # Horizontal
+        c.line(cx, cy - radio, cx, cy + radio) # Vertical
         
-        # Texto de cotas
-        c.setFont("Helvetica-Bold", 7)
-        c.setFillColor(colors.red)
-        c.drawString(cx + 2, cy + 2, f"X:{p['x']} Y:{p['y']}")
+        # Líneas de cotas punteadas (Rojas)
+        c.setDash(3, 3) # Efecto dashed
+        c.setStrokeColor(rojo_css)
+        
+        # Línea hacia borde Y (Arriba/Abajo)
+        if p["y"] < alto_mm/2: # Cota hacia abajo
+             c.line(cx, cy - radio, cx, start_y)
+        else: # Cota hacia arriba
+             c.line(cx, cy + radio, cx, start_y + alto_mm*scale)
+             
+        # Línea hacia borde X (Izq/Der)
+        if p["x"] < ancho_mm/2: # Cota hacia izq
+            c.line(cx - radio, cy, start_x, cy)
+        else: # Cota hacia der
+            c.line(cx + radio, cy, start_x + ancho_mm*scale, cy)
+            
+        c.setDash() # Reset dash
+        
+        # Etiquetas de coordenadas (Texto rojo pequeño)
+        c.setFont("Helvetica-Bold", 8)
+        c.setFillColor(rojo_css)
+        # Dibujamos un pequeño fondo blanco para que el texto se lea sobre las líneas
+        label_text = f"X:{p['x']} Y:{p['y']}"
+        text_width = c.stringWidth(label_text, "Helvetica-Bold", 8)
+        
+        c.setFillColor(colors.white)
+        c.rect(cx + 2, cy + 2, text_width + 2, 10, fill=1, stroke=0) # Fondo etiqueta
+        c.setFillColor(rojo_css)
+        c.drawString(cx + 3, cy + 4, label_text)
 
-    # 6. Cotas Generales (Externas)
+    # 6. Cotas Generales (Estilo Web)
+    # Etiqueta Ancho (Abajo)
     c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(colors.black)
-    c.drawCentredString(width/2, start_y - 20, f"ANCHO: {ancho_mm} mm")
+    c.setFillColor(colors.black) # Color texto general #1e293b (aprox negro)
     
+    # Caja fondo etiqueta ancho
+    ancho_txt = f"{ancho_mm} mm"
+    w_txt = c.stringWidth(ancho_txt, "Helvetica-Bold", 12)
+    # Dibujamos "caja" simulando el estilo de la web
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(1)
+    c.roundRect(width/2 - w_txt/2 - 10, start_y - 40, w_txt + 20, 20, 4, fill=0, stroke=1)
+    c.drawCentredString(width/2, start_y - 34, ancho_txt)
+    
+    # Etiqueta Alto (Izquierda rotada)
     c.saveState()
-    c.translate(start_x - 20, start_y + (alto_mm*scale)/2)
+    # Posicionamos al centro izquierda
+    c.translate(start_x - 40, start_y + (alto_mm*scale)/2)
     c.rotate(90)
-    c.drawCentredString(0, 0, f"ALTO: {alto_mm} mm")
+    alto_txt = f"{alto_mm} mm"
+    w_txt_h = c.stringWidth(alto_txt, "Helvetica-Bold", 12)
+    c.roundRect(-w_txt_h/2 - 10, -10, w_txt_h + 20, 20, 4, fill=0, stroke=1)
+    c.drawCentredString(0, -4, alto_txt)
     c.restoreState()
 
     c.save()
@@ -259,4 +302,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name="plano_visual.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v3.7 | PDF Profesional")
+st.caption("🚀 Generador de Planos v3.8 | PDF Gemelo a la App")
