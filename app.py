@@ -82,10 +82,11 @@ st.markdown('<h1 class="main-title">📐 Generador de Plano <span style="color:#
 st.markdown('<p style="color:#64748b; margin-top:-10px;">Configuración técnica y visualización de perforaciones en tiempo real</p>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 4. SIDEBAR (Límite 2300mm)
+# 4. SIDEBAR (Con logo de Superman)
 # ==============================================================================
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/2312/2312444.png", width=70)
+    # --- CAMBIO AQUI: Logo de Superman ---
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Superman_shield.svg/640px-Superman_shield.svg.png", width=80)
     
     if st.button("🗑️ Nueva Ficha / Resetear", type="primary", use_container_width=True):
         resetear_todo()
@@ -106,17 +107,14 @@ with st.sidebar:
             "Puerta Estándar (2100x900)": (900, 2100),
             "Hoja Ventana (1200x1200)": (1200, 1200),
             "Mampara Baño (1800x800)": (800, 1800)
-            # Jumbo eliminado porque excede 2300mm
         }
         seleccion = st.selectbox("Seleccionar Tipo", list(opciones_medidas.keys()))
         
         if seleccion != "Personalizado":
             ancho_default, alto_default = opciones_medidas[seleccion]
-            # CAMBIO AQUI: max_value=2300
             val_ancho = st.number_input("Ancho (mm)", 1, 2300, value=ancho_default, step=10, key="ancho_preset_temp")
             val_alto = st.number_input("Alto (mm)", 1, 2300, value=alto_default, step=10, key="alto_preset_temp")
         else:
-            # CAMBIO AQUI: max_value=2300
             val_ancho = st.number_input("Ancho (mm)", 1, 2300, key="ancho_input", step=10)
             val_alto = st.number_input("Alto (mm)", 1, 2300, key="alto_input", step=10)
         
@@ -145,7 +143,6 @@ with st.sidebar:
             for i in range(int(num_perf)):
                 with st.expander(f"📍 Perforación #{i+1}", expanded=(i == 0)):
                     c1, c2, c3 = st.columns([1, 1, 1])
-                    # Limitar coordenadas de perforación al tamaño actual del vidrio (que ya está limitado a 2300)
                     px = c1.number_input(f"X (mm)", 0, val_ancho, 100 + (i*150), key=f"x{i}")
                     py = c2.number_input(f"Y (mm)", 0, val_alto, 100 + (i*150), key=f"y{i}")
                     pd = c3.number_input(f"Ø (mm)", 1, 200, 50, key=f"d{i}")
@@ -356,4 +353,4 @@ with col_ficha:
     st.download_button(label="📥 Descargar Plano PDF", data=pdf_file, file_name=f"plano_{cliente if cliente else 'sin_nombre'}.pdf", mime="application/pdf", use_container_width=True)
 
 st.divider()
-st.caption("🚀 Generador de Planos v4.3 | Límite Máximo 2300mm")
+st.caption("🚀 Generador de Planos v4.4 | Superman Edition")
